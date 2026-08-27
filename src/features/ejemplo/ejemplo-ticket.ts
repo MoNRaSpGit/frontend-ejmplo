@@ -28,7 +28,7 @@ export function printSalesTicket(sales: EjemploSale[], clientName?: string) {
 <html lang="es">
 <head>
 <meta charset="utf-8" />
-<title>Ticket ${sale.id}</title>
+<title>Ticket ${first.id}</title>
 <style>
   @page { size: 80mm auto; margin: 4mm; }
   body { font-family: "Courier New", monospace; font-size: 12px; width: 72mm; margin: 0; }
