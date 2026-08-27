@@ -297,6 +297,40 @@ select {
   bottom: 16px;
 }
 
+.ejemplo-header__controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ejemplo-printer-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.ejemplo-printer-option {
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border: 1px solid var(--ej-border);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+}
+
+.ejemplo-printer-option.is-active {
+  border-color: var(--ej-accent);
+  background: var(--ej-accent);
+  color: #fff;
+}
+
 .ejemplo-cart {
   position: sticky;
   bottom: 16px;

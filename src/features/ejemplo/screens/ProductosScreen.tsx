@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { PaymentMethodModal } from "../components/PaymentMethodModal";
 import { createProduct, createSale, deleteProduct } from "../ejemplo.client";
-import { printSalesTicket } from "../ejemplo-ticket";
+import { printSaleTicket } from "../services/ejemplo.print";
 import { EjemploClient, EjemploPaymentMethod, EjemploProduct, EjemploSale } from "../ejemplo.types";
 
 type ProductosScreenProps = {
@@ -93,7 +93,14 @@ export function ProductosScreen({ rubro, products, clients, onProductsChange }: 
       toast.success("Venta registrada.");
       if (printTicket) {
         const client = clientId ? clients.find((item) => item.id === clientId) : undefined;
-        printSalesTicket(sales, client?.name);
+        try {
+          await printSaleTicket(sales, client?.name);
+        } catch (printError) {
+          // La venta ya quedo registrada; solo fallo la impresion.
+          toast.error(
+            printError instanceof Error ? printError.message : "La venta se registro pero no se pudo imprimir el ticket."
+          );
+        }
       }
       setShowPaymentModal(false);
       setCart([]);

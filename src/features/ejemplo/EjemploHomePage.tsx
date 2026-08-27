@@ -4,6 +4,8 @@ import { listClients, listProducts, listRubros } from "./ejemplo.client";
 import { ClientesScreen } from "./screens/ClientesScreen";
 import { PanelScreen } from "./screens/PanelScreen";
 import { ProductosScreen } from "./screens/ProductosScreen";
+import { PrinterSettingsModal } from "./components/PrinterSettingsModal";
+import { getPreferredPrinterName } from "./services/ejemplo.print";
 import { EjemploClient, EjemploProduct } from "./ejemplo.types";
 
 type ViewMode = "productos" | "clientes" | "panel";
@@ -25,6 +27,8 @@ export function EjemploHomePage() {
   const [products, setProducts] = useState<EjemploProduct[]>([]);
   const [clients, setClients] = useState<EjemploClient[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPrinterModalOpen, setIsPrinterModalOpen] = useState(false);
+  const [printerName, setPrinterName] = useState<string | null>(() => getPreferredPrinterName());
 
   useEffect(() => {
     let active = true;
@@ -83,16 +87,26 @@ export function EjemploHomePage() {
             <p>Ejemplo de sistema de venta, personalizable segun el rubro del cliente.</p>
           </div>
 
-          <label className="ejemplo-rubro-picker">
-            <span>Rubro</span>
-            <select value={rubro} onChange={(event) => setRubro(event.target.value)}>
-              {rubros.map((item) => (
-                <option key={item} value={item}>
-                  {capitalize(item)}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="ejemplo-header__controls">
+            <label className="ejemplo-rubro-picker">
+              <span>Rubro</span>
+              <select value={rubro} onChange={(event) => setRubro(event.target.value)}>
+                {rubros.map((item) => (
+                  <option key={item} value={item}>
+                    {capitalize(item)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <button
+              type="button"
+              className="ejemplo-button ejemplo-button--ghost"
+              onClick={() => setIsPrinterModalOpen(true)}
+            >
+              🖨️ {printerName || "Elegir impresora"}
+            </button>
+          </div>
         </div>
 
         <nav className="ejemplo-nav">
@@ -116,6 +130,14 @@ export function EjemploHomePage() {
         {viewMode === "clientes" ? <ClientesScreen clients={clients} onClientsChange={setClients} /> : null}
         {viewMode === "panel" ? <PanelScreen rubro={rubro} /> : null}
       </div>
+
+      {isPrinterModalOpen ? (
+        <PrinterSettingsModal
+          currentPrinterName={printerName}
+          onClose={() => setIsPrinterModalOpen(false)}
+          onPrinterChange={setPrinterName}
+        />
+      ) : null}
     </main>
   );
 }
