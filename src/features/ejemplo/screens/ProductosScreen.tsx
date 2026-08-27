@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { PaymentMethodModal } from "../components/PaymentMethodModal";
 import { createProduct, createSale, deleteProduct } from "../ejemplo.client";
+import { printSaleTicket } from "../ejemplo-ticket";
 import { EjemploClient, EjemploPaymentMethod, EjemploProduct } from "../ejemplo.types";
 
 type ProductosScreenProps = {
@@ -44,8 +45,10 @@ export function ProductosScreen({ rubro, products, clients, onProductsChange }: 
 
     setIsSubmittingSale(true);
     try {
-      await createSale({ productId: selectedProduct.id, quantity, paymentMethod, clientId });
+      const sale = await createSale({ productId: selectedProduct.id, quantity, paymentMethod, clientId });
       toast.success("Venta registrada.");
+      const client = clientId ? clients.find((item) => item.id === clientId) : undefined;
+      printSaleTicket(sale, client?.name);
       setShowPaymentModal(false);
       setSelectedProduct(null);
       setQuantity(1);
