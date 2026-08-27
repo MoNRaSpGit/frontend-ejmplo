@@ -2,8 +2,8 @@ import { useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { PaymentMethodModal } from "../components/PaymentMethodModal";
 import { createProduct, createSale, deleteProduct } from "../ejemplo.client";
-import { printSaleTicket } from "../ejemplo-ticket";
-import { EjemploClient, EjemploPaymentMethod, EjemploProduct } from "../ejemplo.types";
+import { printSalesTicket } from "../ejemplo-ticket";
+import { EjemploClient, EjemploPaymentMethod, EjemploProduct, EjemploSale } from "../ejemplo.types";
 
 type ProductosScreenProps = {
   rubro: string;
@@ -12,46 +12,91 @@ type ProductosScreenProps = {
   onProductsChange: (products: EjemploProduct[]) => void;
 };
 
+type CartLine = { product: EjemploProduct; quantity: number };
+
 function emptyForm(rubro: string) {
   return { rubro, category: "", name: "", price: "", description: "" };
 }
 
 export function ProductosScreen({ rubro, products, clients, onProductsChange }: ProductosScreenProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedProduct, setSelectedProduct] = useState<EjemploProduct | null>(null);
-  const [quantity, setQuantity] = useState(1);
+  const [cart, setCart] = useState<CartLine[]>([]);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [printTicket, setPrintTicket] = useState(true);
   const [isSubmittingSale, setIsSubmittingSale] = useState(false);
 
   const [showNewProductForm, setShowNewProductForm] = useState(false);
   const [newProductForm, setNewProductForm] = useState(emptyForm(rubro));
   const [isSavingProduct, setIsSavingProduct] = useState(false);
 
+  const term = searchTerm.trim().toLowerCase();
+
   const filteredProducts = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
-    if (!term) return products;
+    if (!term) return [];
     return products.filter(
       (product) => product.name.toLowerCase().includes(term) || product.category.toLowerCase().includes(term)
     );
-  }, [products, searchTerm]);
+  }, [products, term]);
 
-  function handleSelectProduct(product: EjemploProduct) {
-    setSelectedProduct(product);
-    setQuantity(1);
+  const cartTotal = useMemo(
+    () => cart.reduce((acc, line) => acc + line.product.price * line.quantity, 0),
+    [cart]
+  );
+
+  function addToCart(product: EjemploProduct) {
+    setCart((current) => {
+      const existing = current.find((line) => line.product.id === product.id);
+      if (existing) {
+        return current.map((line) =>
+          line.product.id === product.id ? { ...line, quantity: line.quantity + 1 } : line
+        );
+      }
+      return [...current, { product, quantity: 1 }];
+    });
+  }
+
+  function changeQuantity(productId: string, delta: number) {
+    setCart((current) =>
+      current
+        .map((line) =>
+          line.product.id === productId ? { ...line, quantity: line.quantity + delta } : line
+        )
+        .filter((line) => line.quantity > 0)
+    );
+  }
+
+  function removeFromCart(productId: string) {
+    setCart((current) => current.filter((line) => line.product.id !== productId));
+  }
+
+  function openPayment(withTicket: boolean) {
+    if (!cart.length) return;
+    setPrintTicket(withTicket);
+    setShowPaymentModal(true);
   }
 
   async function handleConfirmSale(paymentMethod: EjemploPaymentMethod, clientId?: string) {
-    if (!selectedProduct) return;
+    if (!cart.length) return;
 
     setIsSubmittingSale(true);
     try {
-      const sale = await createSale({ productId: selectedProduct.id, quantity, paymentMethod, clientId });
+      const sales: EjemploSale[] = [];
+      for (const line of cart) {
+        const sale = await createSale({
+          productId: line.product.id,
+          quantity: line.quantity,
+          paymentMethod,
+          clientId
+        });
+        sales.push(sale);
+      }
       toast.success("Venta registrada.");
-      const client = clientId ? clients.find((item) => item.id === clientId) : undefined;
-      printSaleTicket(sale, client?.name);
+      if (printTicket) {
+        const client = clientId ? clients.find((item) => item.id === clientId) : undefined;
+        printSalesTicket(sales, client?.name);
+      }
       setShowPaymentModal(false);
-      setSelectedProduct(null);
-      setQuantity(1);
+      setCart([]);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo registrar la venta.");
     } finally {
@@ -89,7 +134,7 @@ export function ProductosScreen({ rubro, products, clients, onProductsChange }: 
     try {
       await deleteProduct(productId);
       onProductsChange(products.filter((product) => product.id !== productId));
-      if (selectedProduct?.id === productId) setSelectedProduct(null);
+      removeFromCart(productId);
       toast.success("Producto eliminado.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo eliminar el producto.");
@@ -103,7 +148,7 @@ export function ProductosScreen({ rubro, products, clients, onProductsChange }: 
           className="ejemplo-search"
           value={searchTerm}
           onChange={(event) => setSearchTerm(event.target.value)}
-          placeholder="Buscar producto por nombre o categoria..."
+          placeholder="Escribi el nombre del producto..."
         />
         <button
           type="button"
@@ -157,60 +202,84 @@ export function ProductosScreen({ rubro, products, clients, onProductsChange }: 
         </article>
       ) : null}
 
-      <div className="ejemplo-product-grid">
-        {filteredProducts.map((product) => (
-          <article
-            key={product.id}
-            className={`ejemplo-product-card ${selectedProduct?.id === product.id ? "is-selected" : ""}`}
-            onClick={() => handleSelectProduct(product)}
-          >
-            <span className="ejemplo-product-card__category">{product.category}</span>
-            <strong>{product.name}</strong>
-            {product.description ? <p>{product.description}</p> : null}
-            <div className="ejemplo-product-card__footer">
-              <strong>${product.price.toFixed(2)}</strong>
-              <button
-                type="button"
-                className="ejemplo-button--icon"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  handleDeleteProduct(product.id);
-                }}
-                aria-label={`Eliminar ${product.name}`}
-              >
-                x
+      {term ? (
+        <div className="ejemplo-product-grid">
+          {filteredProducts.map((product) => (
+            <article key={product.id} className="ejemplo-product-card" onClick={() => addToCart(product)}>
+              <span className="ejemplo-product-card__category">{product.category}</span>
+              <strong>{product.name}</strong>
+              {product.description ? <p>{product.description}</p> : null}
+              <div className="ejemplo-product-card__footer">
+                <strong>${product.price.toFixed(2)}</strong>
+                <button
+                  type="button"
+                  className="ejemplo-button--icon"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    handleDeleteProduct(product.id);
+                  }}
+                  aria-label={`Eliminar ${product.name}`}
+                >
+                  x
+                </button>
+              </div>
+            </article>
+          ))}
+          {!filteredProducts.length ? <p className="ejemplo-empty">Sin resultados para "{searchTerm}".</p> : null}
+        </div>
+      ) : (
+        <p className="ejemplo-empty">Escribi el nombre de un producto para buscarlo y agregarlo a la venta.</p>
+      )}
+
+      {cart.length ? (
+        <article className="ejemplo-panel ejemplo-cart">
+          <h2>Venta actual</h2>
+          <div className="ejemplo-client-list">
+            {cart.map((line) => (
+              <div key={line.product.id} className="ejemplo-cart__line">
+                <div>
+                  <strong>{line.product.name}</strong>
+                  <span> · ${line.product.price.toFixed(2)} c/u</span>
+                </div>
+                <div className="ejemplo-quantity-stepper">
+                  <button type="button" onClick={() => changeQuantity(line.product.id, -1)}>
+                    -
+                  </button>
+                  <span>{line.quantity}</span>
+                  <button type="button" onClick={() => changeQuantity(line.product.id, 1)}>
+                    +
+                  </button>
+                </div>
+                <strong>${(line.product.price * line.quantity).toFixed(2)}</strong>
+                <button
+                  type="button"
+                  className="ejemplo-button--icon"
+                  onClick={() => removeFromCart(line.product.id)}
+                  aria-label={`Quitar ${line.product.name}`}
+                >
+                  x
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="ejemplo-cart__footer">
+            <strong>Total: ${cartTotal.toFixed(2)}</strong>
+            <div className="ejemplo-cart__actions">
+              <button type="button" className="ejemplo-button ejemplo-button--ghost" onClick={() => openPayment(false)}>
+                Cobrar
+              </button>
+              <button type="button" className="ejemplo-button" onClick={() => openPayment(true)}>
+                Cobrar con ticket
               </button>
             </div>
-          </article>
-        ))}
-        {!filteredProducts.length ? <p className="ejemplo-empty">No hay productos para este rubro todavia.</p> : null}
-      </div>
-
-      {selectedProduct ? (
-        <article className="ejemplo-panel ejemplo-sale-bar">
-          <div>
-            <strong>{selectedProduct.name}</strong>
-            <span> · ${selectedProduct.price.toFixed(2)} c/u</span>
           </div>
-          <div className="ejemplo-quantity-stepper">
-            <button type="button" onClick={() => setQuantity((current) => Math.max(1, current - 1))}>
-              -
-            </button>
-            <span>{quantity}</span>
-            <button type="button" onClick={() => setQuantity((current) => current + 1)}>
-              +
-            </button>
-          </div>
-          <strong>Total: ${(selectedProduct.price * quantity).toFixed(2)}</strong>
-          <button type="button" className="ejemplo-button" onClick={() => setShowPaymentModal(true)}>
-            Cobrar
-          </button>
         </article>
       ) : null}
 
-      {showPaymentModal && selectedProduct ? (
+      {showPaymentModal && cart.length ? (
         <PaymentMethodModal
-          total={selectedProduct.price * quantity}
+          total={cartTotal}
           clients={clients}
           isSubmitting={isSubmittingSale}
           onConfirm={handleConfirmSale}

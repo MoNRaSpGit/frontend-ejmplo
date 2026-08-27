@@ -13,7 +13,16 @@ function formatMoney(value: number) {
 // en vez de la marca real -- es para mostrarle a un cliente potencial como
 // queda un ticket, no para un negocio puntual.
 export function printSaleTicket(sale: EjemploSale, clientName?: string) {
-  const now = new Date(sale.createdAt);
+  printSalesTicket([sale], clientName);
+}
+
+// Ticket para una venta de varios items (carrito). Toma la lista de ventas
+// individuales generadas en el backend y las junta en un unico ticket.
+export function printSalesTicket(sales: EjemploSale[], clientName?: string) {
+  if (!sales.length) return;
+  const first = sales[0];
+  const now = new Date(first.createdAt);
+  const total = sales.reduce((acc, item) => acc + item.total, 0);
 
   const html = `<!doctype html>
 <html lang="es">
@@ -41,22 +50,26 @@ export function printSaleTicket(sale: EjemploSale, clientName?: string) {
     <small>${now.toLocaleString("es-UY")}</small>
     <small>Uso interno</small>
   </div>
-  <div>Venta #${sale.id}</div>
+  <div>Venta #${first.id}</div>
 
   <div class="border"></div>
   <div class="customer">
     <div>Cliente: ${clientName ? escapeHtml(clientName) : "-"}</div>
-    <div>Pago: ${PAYMENT_METHOD_LABELS[sale.paymentMethod]}</div>
+    <div>Pago: ${PAYMENT_METHOD_LABELS[first.paymentMethod]}</div>
   </div>
   <div class="border"></div>
 
-  <div class="row">
-    <span>${sale.quantity}x ${escapeHtml(sale.productName)}</span>
-    <span>$${formatMoney(sale.total)}</span>
-  </div>
+  ${sales
+    .map(
+      (item) => `<div class="row">
+    <span>${item.quantity}x ${escapeHtml(item.productName)}</span>
+    <span>$${formatMoney(item.total)}</span>
+  </div>`
+    )
+    .join("\n  ")}
 
   <div class="border"></div>
-  <div class="total-row"><span>Total</span><span>$${formatMoney(sale.total)}</span></div>
+  <div class="total-row"><span>Total</span><span>$${formatMoney(total)}</span></div>
 
   <div class="footer">Gracias por tu compra!</div>
   <script>window.onload = () => window.print();</script>

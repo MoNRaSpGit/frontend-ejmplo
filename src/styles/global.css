@@ -297,6 +297,39 @@ select {
   bottom: 16px;
 }
 
+.ejemplo-cart {
+  position: sticky;
+  bottom: 16px;
+}
+
+.ejemplo-cart__line {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--ej-border);
+}
+
+.ejemplo-cart__line > div:first-child {
+  flex: 1;
+  min-width: 140px;
+}
+
+.ejemplo-cart__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+
+.ejemplo-cart__actions {
+  display: flex;
+  gap: 10px;
+}
+
 .ejemplo-quantity-stepper {
   display: flex;
   align-items: center;
