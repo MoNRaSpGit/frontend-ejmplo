@@ -60,6 +60,12 @@ export default defineConfig(({ mode }) => {
       },
       VitePWA({
         registerType: "autoUpdate",
+        // Registro a mano via virtual:pwa-register (AppUpdateNotice.tsx), no
+        // el script auto-inyectado -- asi el boton "Actualizar" puede
+        // esperar a que el service worker nuevo tome el control antes de
+        // recargar, en vez de recargar a ciegas y servir el cache viejo
+        // (eso era lo que obligaba a apretar "Actualizar" varias veces).
+        injectRegister: null,
         includeAssets: ["icon-192.png", "icon-512.png"],
         manifest: {
           name: "Sistema de venta - Demo",

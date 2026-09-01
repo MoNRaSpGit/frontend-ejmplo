@@ -1,14 +1,50 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fetchPublishedFrontendBuildMeta, FRONTEND_BUILD_INFO } from "../config/build";
 
 const UPDATE_CHECK_INTERVAL_MS = 2 * 60 * 1000;
 
 export function AppUpdateNotice() {
   const [show, setShow] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  // Guarda la funcion que devuelve registerSW() -- llamarla con true hace
+  // que el service worker nuevo tome el control (skipWaiting) y recien
+  // ahi recarga la pagina. Antes se hacia un window.location.reload() a
+  // ciegas: si el service worker todavia no habia terminado de instalar
+  // la version nueva, el reload volvia a servir el cache viejo y el
+  // cartel de "hay una version nueva" seguia apareciendo -- por eso habia
+  // que apretar "Actualizar" varias veces.
+  const updateSwRef = useRef<((reloadPage?: boolean) => Promise<void>) | null>(null);
 
   useEffect(() => {
     if (!import.meta.env.PROD) {
       setShow(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    import("virtual:pwa-register")
+      .then(({ registerSW }) => {
+        if (cancelled) return;
+        updateSwRef.current = registerSW({
+          onNeedRefresh() {
+            setShow(true);
+          }
+        });
+      })
+      .catch(() => {
+        // Si el modulo del service worker no carga (ej: navegador viejo),
+        // el aviso via app-build.json de mas abajo sigue funcionando
+        // igual, solo que el boton termina haciendo un reload comun.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!import.meta.env.PROD) {
       return;
     }
 
@@ -17,11 +53,12 @@ export function AppUpdateNotice() {
       try {
         const published = await fetchPublishedFrontendBuildMeta();
         if (!mounted) return;
-        setShow(published.releaseSha !== FRONTEND_BUILD_INFO.releaseSha);
-      } catch {
-        if (mounted) {
-          setShow(false);
+        if (published.releaseSha !== FRONTEND_BUILD_INFO.releaseSha) {
+          setShow(true);
         }
+      } catch {
+        // Silencioso: si esta llamada falla, el aviso via el service
+        // worker (onNeedRefresh) sigue siendo la fuente principal.
       }
     };
 
@@ -47,7 +84,18 @@ export function AppUpdateNotice() {
     };
   }, []);
 
-  function handleUpdate() {
+  async function handleUpdate() {
+    setIsUpdating(true);
+    try {
+      if (updateSwRef.current) {
+        // reloadPage=true: espera a que el nuevo service worker tome el
+        // control y recien ahi recarga -- un solo click alcanza.
+        await updateSwRef.current(true);
+        return;
+      }
+    } catch {
+      // Si algo falla, cae al reload comun de abajo.
+    }
     window.location.reload();
   }
 
@@ -58,8 +106,8 @@ export function AppUpdateNotice() {
   return (
     <aside style={noticeStyle}>
       <strong>Hay una version nueva disponible.</strong>
-      <button type="button" onClick={handleUpdate} style={buttonStyle}>
-        Actualizar
+      <button type="button" onClick={() => void handleUpdate()} disabled={isUpdating} style={buttonStyle}>
+        {isUpdating ? "Actualizando..." : "Actualizar"}
       </button>
     </aside>
   );
