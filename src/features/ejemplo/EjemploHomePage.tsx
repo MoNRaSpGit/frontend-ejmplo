@@ -1,5 +1,5 @@
-import { LayoutDashboard, Printer, ShoppingBag, Users } from "lucide-react";
-import { useEffect, useState, type ComponentType } from "react";
+import { LayoutDashboard, Menu, Printer, ShoppingBag, UserRound, Users } from "lucide-react";
+import { useEffect, useRef, useState, type ComponentType } from "react";
 import { toast } from "react-toastify";
 import { listClients, listProducts, listRubros } from "./ejemplo.client";
 import { ClientesScreen } from "./screens/ClientesScreen";
@@ -38,6 +38,8 @@ export function EjemploHomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isPrinterModalOpen, setIsPrinterModalOpen] = useState(false);
   const [printerName, setPrinterName] = useState<string | null>(() => getPreferredPrinterName());
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -79,10 +81,23 @@ export function EjemploHomePage() {
     };
   }, [rubro]);
 
+  useEffect(() => {
+    if (!isMenuOpen) return;
+
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isMenuOpen]);
+
   if (isLoading) {
     return (
       <main className="ejemplo-app">
-        <p className="ejemplo-empty">Cargando demo...</p>
+        <p className="ejemplo-empty">Cargando...</p>
       </main>
     );
   }
@@ -97,30 +112,47 @@ export function EjemploHomePage() {
             </span>
             <div>
               <strong>{rubro ? capitalize(rubro) : "Sistema de venta"}</strong>
-              <p>Demo personalizable segun el rubro del cliente</p>
             </div>
           </div>
 
-          <div className="ejemplo-topbar__controls">
-            <label className="ejemplo-rubro-picker">
-              <span>Rubro</span>
-              <select value={rubro} onChange={(event) => setRubro(event.target.value)}>
-                {rubros.map((item) => (
-                  <option key={item} value={item}>
-                    {capitalize(item)}
-                  </option>
-                ))}
-              </select>
-            </label>
-
+          <div className="ejemplo-user-menu" ref={menuRef}>
             <button
               type="button"
-              className="ejemplo-button ejemplo-button--ghost ejemplo-button--icon-text"
-              onClick={() => setIsPrinterModalOpen(true)}
+              className="ejemplo-user-menu-btn"
+              onClick={() => setIsMenuOpen((current) => !current)}
+              aria-expanded={isMenuOpen}
+              aria-label="Abrir menu"
             >
-              <Printer size={16} strokeWidth={2} />
-              {printerName || "Elegir impresora"}
+              <UserRound size={16} strokeWidth={2} />
+              <Menu size={16} strokeWidth={2} />
             </button>
+
+            {isMenuOpen ? (
+              <div className="ejemplo-user-dropdown">
+                <label className="ejemplo-user-dropdown-field">
+                  <span>Rubro</span>
+                  <select value={rubro} onChange={(event) => setRubro(event.target.value)}>
+                    {rubros.map((item) => (
+                      <option key={item} value={item}>
+                        {capitalize(item)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="ejemplo-user-dropdown-divider" />
+                <button
+                  type="button"
+                  className="ejemplo-user-dropdown-item"
+                  onClick={() => {
+                    setIsPrinterModalOpen(true);
+                    setIsMenuOpen(false);
+                  }}
+                >
+                  <Printer size={16} strokeWidth={2} />
+                  {printerName || "Elegir impresora"}
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
       </header>

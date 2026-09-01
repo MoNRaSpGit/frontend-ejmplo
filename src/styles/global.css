@@ -128,19 +128,53 @@ h3 {
   font-size: 13px;
 }
 
-.ejemplo-topbar__controls {
+/* ---------- Menu de usuario (rubro + impresora, ocultos aca) ---------- */
+
+.ejemplo-user-menu {
+  position: relative;
+}
+
+.ejemplo-user-menu-btn {
+  min-height: 42px;
+  border: 1px solid var(--ej-border);
+  background: var(--ej-surface);
+  color: var(--ej-accent-dark);
+  border-radius: 999px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 16px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-.ejemplo-rubro-picker {
+.ejemplo-user-menu-btn:hover,
+.ejemplo-user-menu-btn:focus {
+  background: var(--ej-accent-soft);
+  border-color: var(--ej-accent);
+}
+
+.ejemplo-user-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 220px;
+  border: 1px solid var(--ej-border);
+  border-radius: var(--ej-radius-md);
+  background: var(--ej-surface);
+  box-shadow: var(--ej-shadow);
+  padding: 12px;
+  z-index: 50;
   display: grid;
-  gap: 4px;
+  gap: 10px;
 }
 
-.ejemplo-rubro-picker span {
+.ejemplo-user-dropdown-field {
+  display: grid;
+  gap: 6px;
+}
+
+.ejemplo-user-dropdown-field span {
   font-size: 11px;
   font-weight: 700;
   color: var(--ej-muted);
@@ -148,14 +182,41 @@ h3 {
   letter-spacing: 0.06em;
 }
 
-.ejemplo-rubro-picker select {
-  min-height: 46px;
+.ejemplo-user-dropdown-field select {
+  min-height: 44px;
   border-radius: var(--ej-radius-sm);
   border: 1px solid var(--ej-border);
   background: var(--ej-surface);
   color: var(--ej-text);
-  padding: 0 14px;
+  padding: 0 12px;
   font-size: 15px;
+}
+
+.ejemplo-user-dropdown-divider {
+  height: 1px;
+  background: var(--ej-border);
+}
+
+.ejemplo-user-dropdown-item {
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: var(--ej-radius-sm);
+  background: transparent;
+  color: var(--ej-text);
+  padding: 10px 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.ejemplo-user-dropdown-item:hover {
+  background: var(--ej-accent-soft);
+  color: var(--ej-accent-dark);
 }
 
 .ejemplo-shell {
@@ -308,7 +369,7 @@ h3 {
 }
 
 .ejemplo-search:focus,
-.ejemplo-rubro-picker select:focus,
+.ejemplo-user-dropdown-field select:focus,
 .ejemplo-field input:focus,
 .ejemplo-field select:focus {
   outline: 2px solid rgba(138, 90, 52, 0.3);
