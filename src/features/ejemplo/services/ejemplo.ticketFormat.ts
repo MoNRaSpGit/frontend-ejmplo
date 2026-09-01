@@ -14,6 +14,7 @@ import {
   rightAlignedLine
 } from "./ejemplo.escpos";
 import { EjemploSale, PAYMENT_METHOD_LABELS } from "../ejemplo.types";
+import { MockClient, getMockClientTotal } from "../ejemplo.mockClients";
 
 // Placeholder de marca: es una demo para mostrarle a clientes, no un
 // negocio puntual (ver ejemplo-ticket viejo en HTML que esto reemplaza).
@@ -23,19 +24,72 @@ const FOOTER_MESSAGE = "Gracias por tu compra!";
 
 // copies: cuantas veces se repite el ticket en el mismo trabajo de
 // impresion (mismo criterio que joker). Con 1 sale solo el ticket
-// completo (para el cliente, con precios). Con 3 salen ademas dos copias
-// compactas sin precios -- una titulada "COMANDA" (para cocina/mostrador)
-// y otra "ARCHIVO" (para que quede en el local) -- cada una con su propio
-// corte de papel. Con 0 no se imprime nada.
-export function buildSaleTicketLines(sales: EjemploSale[], clientName: string | undefined, copies: 0 | 1 | 3 = 1) {
+// completo (para el cliente, con precios). Con 2 sale ademas la copia
+// compacta "COMANDA" (para cocina/mostrador), sin "ARCHIVO" -- es el
+// default actual (ticket cliente + comanda, sin que el operario tenga que
+// elegir nada). Con 3 sale tambien la copia "ARCHIVO" (para que quede en
+// el local), por si en algun momento se vuelve a necesitar. Con 0 no se
+// imprime nada.
+export function buildSaleTicketLines(sales: EjemploSale[], clientName: string | undefined, copies: 0 | 1 | 2 | 3 = 2) {
   if (!sales.length || copies === 0) return [];
 
   const lines = buildFullTicketLines(sales, clientName);
 
-  if (copies === 3) {
+  if (copies === 2 || copies === 3) {
     lines.push(...buildCompactTicketLines(sales, "COMANDA"));
+  }
+  if (copies === 3) {
     lines.push(...buildCompactTicketLines(sales, "ARCHIVO"));
   }
+
+  return lines;
+}
+
+// Ticket de "Pago" de cuenta cliente (ver ejemplo.mockClients.ts): repasa
+// el historial de compras fiadas y el total, y corta -- se usa cuando en
+// Clientes se aprieta "Pago" para saldar la cuenta ficticia de prueba.
+export function buildAccountSettlementTicketLines(client: MockClient) {
+  const lines: string[] = [];
+  const total = getMockClientTotal(client);
+
+  lines.push(ESC_INIT);
+  lines.push(ALIGN_CENTER);
+  lines.push(BOLD_ON, DOUBLE_SIZE_ON);
+  lines.push(`${STORE_NAME}\n`);
+  lines.push(DOUBLE_SIZE_OFF, BOLD_OFF);
+  lines.push(`${new Date().toLocaleString("es-UY", { timeZone: "America/Montevideo" })}\n`);
+  lines.push("Pago de cuenta\n");
+
+  lines.push(ALIGN_LEFT);
+  lines.push(`${decorativeBorder()}\n`);
+  lines.push(BOLD_ON, TALL_SIZE_ON);
+  lines.push(`Cliente: ${client.name}\n`);
+  lines.push(DOUBLE_SIZE_OFF, BOLD_OFF);
+  lines.push(`${decorativeBorder()}\n`);
+
+  client.purchases.forEach((purchase, index) => {
+    lines.push(BOLD_ON);
+    lines.push(`${rightAlignedLine(`${purchase.dateLabel} ${purchase.productName} `, formatMoney(purchase.amount))}\n`);
+    lines.push(BOLD_OFF);
+    if (index < client.purchases.length - 1) {
+      lines.push(`${divider()}\n`);
+    }
+  });
+
+  lines.push(`${decorativeBorder()}\n`);
+  lines.push(BOLD_ON, TALL_SIZE_ON);
+  lines.push(`${rightAlignedLine("Total pagado ", formatMoney(total))}\n`);
+  lines.push(DOUBLE_SIZE_OFF, BOLD_OFF);
+  lines.push("\n");
+
+  lines.push(ALIGN_CENTER);
+  lines.push(BOLD_ON, TALL_SIZE_ON);
+  lines.push(`${FOOTER_MESSAGE}\n`);
+  lines.push(DOUBLE_SIZE_OFF, BOLD_OFF);
+
+  lines.push("\n\n\n");
+  lines.push(ALIGN_LEFT);
+  lines.push(CUT_PAPER);
 
   return lines;
 }

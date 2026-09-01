@@ -711,13 +711,23 @@ h3 {
   min-width: 182px;
 }
 
+/* Bloque de total + Cobrar, separado visualmente de la lista de productos
+   de arriba (fondo propio + borde superior marcado) para que se note que
+   es otra parte de la pantalla, no otra fila de la lista. */
+.ejemplo-cart__checkout {
+  margin-top: 16px;
+  padding: 21px;
+  border-top: 3px solid var(--ej-accent);
+  background: var(--ej-surface-muted);
+  border-radius: var(--ej-radius-sm);
+}
+
 .ejemplo-cart__footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 21px;
   flex-wrap: wrap;
-  padding-top: 8px;
 }
 
 .ejemplo-cart__actions {
@@ -780,6 +790,31 @@ h3 {
 .ejemplo-entries-list {
   display: grid;
   gap: 10px;
+}
+
+/* ---------- Cuenta cliente ficticia (Clientes / prueba) ---------- */
+
+.ejemplo-mock-clients .ejemplo-client-list {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  display: grid;
+  max-height: none;
+}
+
+.ejemplo-mock-client-card {
+  display: grid;
+  gap: 13px;
+  padding: 18px;
+  border: 1px solid var(--ej-border);
+  border-radius: var(--ej-radius-sm);
+  background: var(--ej-surface);
+}
+
+.ejemplo-mock-client-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 13px;
+  font-size: 23px;
 }
 
 .ejemplo-entry-row {

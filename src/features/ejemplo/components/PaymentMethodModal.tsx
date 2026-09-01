@@ -1,28 +1,38 @@
 import { useState } from "react";
-import { EjemploClient, EjemploPaymentMethod, PAYMENT_METHOD_LABELS } from "../ejemplo.types";
+import { MockClient } from "../ejemplo.mockClients";
 
-const METHODS: EjemploPaymentMethod[] = ["efectivo", "tarjeta", "transferencia", "cuenta"];
+// Metodos de cobro que ve el operario en este modal. No es lo mismo que
+// EjemploPaymentMethod (el que guarda el backend): "cliente" es un metodo
+// solo de UI -- interna mente se registra como una venta en efectivo (no
+// se manda clientId al backend) y la "deuda" se lleva aparte, en el
+// estado ficticio de ejemplo.mockClients.ts (ver ProductosScreen.tsx /
+// EjemploHomePage.tsx). El dia que "Cliente" pase a ser cuenta corriente
+// de verdad, esto vuelve a mandar paymentMethod "cuenta" + clientId real.
+export type UiPaymentMethod = "efectivo" | "tarjeta" | "cliente";
+
+const METHODS: UiPaymentMethod[] = ["efectivo", "tarjeta", "cliente"];
+
+const METHOD_LABELS: Record<UiPaymentMethod, string> = {
+  efectivo: "Efectivo",
+  tarjeta: "POS",
+  cliente: "Cliente"
+};
 
 type PaymentMethodModalProps = {
   total: number;
-  clients: EjemploClient[];
+  mockClients: MockClient[];
   isSubmitting: boolean;
-  onConfirm: (paymentMethod: EjemploPaymentMethod, clientId?: string, customerName?: string) => void;
+  onConfirm: (paymentMethod: UiPaymentMethod, mockClientId?: string) => void;
   onClose: () => void;
 };
 
-export function PaymentMethodModal({ total, clients, isSubmitting, onConfirm, onClose }: PaymentMethodModalProps) {
-  const [method, setMethod] = useState<EjemploPaymentMethod>("efectivo");
-  const [clientId, setClientId] = useState("");
-  const [customerName, setCustomerName] = useState("");
+export function PaymentMethodModal({ total, mockClients, isSubmitting, onConfirm, onClose }: PaymentMethodModalProps) {
+  const [method, setMethod] = useState<UiPaymentMethod>("efectivo");
+  const [mockClientId, setMockClientId] = useState("");
 
   function handleConfirm() {
-    if (method === "cuenta" && !clientId) return;
-    onConfirm(
-      method,
-      method === "cuenta" ? clientId : undefined,
-      method === "cuenta" ? undefined : customerName.trim() || undefined
-    );
+    if (method === "cliente" && !mockClientId) return;
+    onConfirm(method, method === "cliente" ? mockClientId : undefined);
   }
 
   return (
@@ -40,33 +50,24 @@ export function PaymentMethodModal({ total, clients, isSubmitting, onConfirm, on
               className={`ejemplo-chip ${method === value ? "is-selected" : ""}`}
               onClick={() => setMethod(value)}
             >
-              {PAYMENT_METHOD_LABELS[value]}
+              {METHOD_LABELS[value]}
             </button>
           ))}
         </div>
 
-        {method === "cuenta" ? (
+        {method === "cliente" ? (
           <label className="ejemplo-field">
             <span>Cliente</span>
-            <select value={clientId} onChange={(event) => setClientId(event.target.value)}>
+            <select value={mockClientId} onChange={(event) => setMockClientId(event.target.value)}>
               <option value="">Seleccionar...</option>
-              {clients.map((client) => (
+              {mockClients.map((client) => (
                 <option key={client.id} value={client.id}>
                   {client.name}
                 </option>
               ))}
             </select>
           </label>
-        ) : (
-          <label className="ejemplo-field">
-            <span>Nombre del cliente (opcional)</span>
-            <input
-              value={customerName}
-              onChange={(event) => setCustomerName(event.target.value)}
-              placeholder="Ej: Juan"
-            />
-          </label>
-        )}
+        ) : null}
 
         <div className="ejemplo-modal__footer">
           <button type="button" className="ejemplo-button ejemplo-button--ghost" onClick={onClose}>
@@ -76,7 +77,7 @@ export function PaymentMethodModal({ total, clients, isSubmitting, onConfirm, on
             type="button"
             className="ejemplo-button"
             onClick={handleConfirm}
-            disabled={isSubmitting || (method === "cuenta" && !clientId)}
+            disabled={isSubmitting || (method === "cliente" && !mockClientId)}
           >
             {isSubmitting ? "Registrando..." : "Confirmar"}
           </button>

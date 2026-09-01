@@ -10,6 +10,7 @@ import { PrinterSettingsModal } from "./components/PrinterSettingsModal";
 import { getPreferredPrinterName, getPrintMethod } from "./services/ejemplo.print";
 import { getCachedUsbPrinterName, primeUsbPrinterConnection } from "./services/ejemplo.webusbPrint";
 import { EjemploClient, EjemploProduct } from "./ejemplo.types";
+import { MockPurchase, getInitialMockClients } from "./ejemplo.mockClients";
 
 type ViewMode = "productos" | "stock" | "clientes" | "panel";
 
@@ -46,6 +47,11 @@ export function EjemploHomePage() {
   const [rubro, setRubro] = useState("");
   const [products, setProducts] = useState<EjemploProduct[]>([]);
   const [clients, setClients] = useState<EjemploClient[]>([]);
+  // Cuenta cliente ficticia de prueba (ver ejemplo.mockClients.ts): vive
+  // solo en este estado de React, nunca se guarda -- por eso al recargar
+  // la pagina siempre vuelve a arrancar con la deuda original de Juan,
+  // Maria y Pedro.
+  const [mockClients, setMockClients] = useState(getInitialMockClients);
   const [isLoading, setIsLoading] = useState(true);
   const [isPrinterModalOpen, setIsPrinterModalOpen] = useState(false);
   const [printerName, setPrinterName] = useState<string | null>(() => getPreferredPrinterName());
@@ -122,6 +128,16 @@ export function EjemploHomePage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isMenuOpen]);
 
+  function addMockPurchases(clientId: string, purchases: MockPurchase[]) {
+    setMockClients((current) =>
+      current.map((client) => (client.id === clientId ? { ...client, purchases: [...client.purchases, ...purchases] } : client))
+    );
+  }
+
+  function settleMockClient(clientId: string) {
+    setMockClients((current) => current.map((client) => (client.id === clientId ? { ...client, purchases: [] } : client)));
+  }
+
   if (isLoading) {
     return (
       <main className="ejemplo-app">
@@ -186,11 +202,20 @@ export function EjemploHomePage() {
       </header>
 
       <main className="ejemplo-shell">
-        {viewMode === "productos" ? <ProductosScreen products={products} clients={clients} /> : null}
+        {viewMode === "productos" ? (
+          <ProductosScreen products={products} mockClients={mockClients} onAddMockPurchases={addMockPurchases} />
+        ) : null}
         {viewMode === "stock" ? (
           <StockScreen rubro={rubro} products={products} onProductsChange={setProducts} />
         ) : null}
-        {viewMode === "clientes" ? <ClientesScreen clients={clients} onClientsChange={setClients} /> : null}
+        {viewMode === "clientes" ? (
+          <ClientesScreen
+            clients={clients}
+            onClientsChange={setClients}
+            mockClients={mockClients}
+            onSettleMockClient={settleMockClient}
+          />
+        ) : null}
         {viewMode === "panel" ? <PanelScreen rubro={rubro} /> : null}
       </main>
 

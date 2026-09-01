@@ -2,15 +2,17 @@ import { ImagePlus, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { CustomizeProductModal } from "../components/CustomizeProductModal";
-import { PaymentMethodModal } from "../components/PaymentMethodModal";
+import { PaymentMethodModal, UiPaymentMethod } from "../components/PaymentMethodModal";
 import { createSale } from "../ejemplo.client";
 import { printSaleTicket } from "../services/ejemplo.print";
-import { EjemploClient, EjemploPaymentMethod, EjemploProduct, EjemploSale } from "../ejemplo.types";
+import { EjemploProduct, EjemploSale } from "../ejemplo.types";
 import { setAppBusy } from "../../../shared/state/appActivity";
+import { MockClient, MockPurchase } from "../ejemplo.mockClients";
 
 type ProductosScreenProps = {
   products: EjemploProduct[];
-  clients: EjemploClient[];
+  mockClients: MockClient[];
+  onAddMockPurchases: (clientId: string, purchases: MockPurchase[]) => void;
 };
 
 type CartLine = { key: string; product: EjemploProduct; detail: string; quantity: number };
@@ -19,16 +21,23 @@ function buildLineKey(productId: string, detail: string) {
   return `${productId}::${detail}`;
 }
 
-export function ProductosScreen({ products, clients }: ProductosScreenProps) {
+// Nombre generico para el ticket cuando no se eligio un cliente de cuenta
+// (efectivo/POS) -- ver pedido: "poné por defecto Juan, que siempre salga
+// Juan". Cuando el cobro es "Cliente" el nombre real sale del cliente de
+// prueba elegido (ver handleConfirmSale).
+const DEFAULT_CUSTOMER_NAME = "Juan";
+
+// Cuantos tickets salen por venta, fijo (ya no lo elige el operario): el
+// ticket completo para el cliente + la copia compacta "COMANDA" para
+// cocina/mostrador (ver ejemplo.ticketFormat.ts, copies=2).
+const TICKET_COPIES = 2;
+
+export function ProductosScreen({ products, mockClients, onAddMockPurchases }: ProductosScreenProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [customizingProduct, setCustomizingProduct] = useState<EjemploProduct | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isSubmittingSale, setIsSubmittingSale] = useState(false);
-  // Cuantos tickets salen por venta (igual criterio que joker): 0 = solo
-  // registra, sin imprimir nada; 1 = solo el ticket para el cliente; 3 =
-  // ademas una copia "COMANDA" y otra "ARCHIVO" (ver ejemplo.ticketFormat.ts).
-  const [ticketCopies, setTicketCopies] = useState<0 | 1 | 3>(1);
 
   // Mientras haya algo en el carrito, el modal de personalizar o el de
   // cobro abiertos, hay una venta en curso: AppUpdateNotice no debe
@@ -83,8 +92,15 @@ export function ProductosScreen({ products, clients }: ProductosScreenProps) {
     setShowPaymentModal(true);
   }
 
-  async function handleConfirmSale(paymentMethod: EjemploPaymentMethod, clientId?: string, customerName?: string) {
+  async function handleConfirmSale(uiPaymentMethod: UiPaymentMethod, mockClientId?: string) {
     if (!cart.length) return;
+
+    // "Cliente" es ficticio (ver ejemplo.mockClients.ts): al backend se
+    // manda como una venta en efectivo normal, sin clientId -- la "deuda"
+    // del cliente de prueba se lleva aparte, solo en memoria.
+    const backendPaymentMethod = uiPaymentMethod === "cliente" ? "efectivo" : uiPaymentMethod;
+    const mockClient = uiPaymentMethod === "cliente" ? mockClients.find((item) => item.id === mockClientId) : undefined;
+    const customerName = mockClient?.name ?? DEFAULT_CUSTOMER_NAME;
 
     setIsSubmittingSale(true);
     try {
@@ -93,20 +109,29 @@ export function ProductosScreen({ products, clients }: ProductosScreenProps) {
         const sale = await createSale({
           productId: line.product.id,
           quantity: line.quantity,
-          paymentMethod,
-          clientId,
+          paymentMethod: backendPaymentMethod,
           detail: line.detail || undefined
         });
         sales.push(sale);
       }
-      toast.success(ticketCopies === 0 ? "Venta registrada (sin ticket)." : "Venta registrada.");
-      // Si el cliente eligio cuenta corriente el nombre sale del cliente
-      // elegido, si no, del campo "Nombre del cliente" opcional (o nada,
-      // si lo dejo en blanco). Con 0 copias, printSaleTicket no imprime
-      // nada (ver ejemplo.print.ts).
-      const client = clientId ? clients.find((item) => item.id === clientId) : undefined;
+      toast.success("Venta registrada.");
+
+      if (mockClient) {
+        const today = new Date();
+        const dateLabel = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}`;
+        onAddMockPurchases(
+          mockClient.id,
+          cart.map((line) => ({
+            id: `mp-${Date.now()}-${line.key}`,
+            productName: `${line.quantity}x ${line.product.name}`,
+            amount: Math.round(line.product.price * line.quantity * 100) / 100,
+            dateLabel
+          }))
+        );
+      }
+
       try {
-        await printSaleTicket(sales, client?.name ?? customerName, ticketCopies);
+        await printSaleTicket(sales, customerName, TICKET_COPIES);
       } catch (printError) {
         // La venta ya quedo registrada; solo fallo la impresion.
         toast.error(
@@ -193,42 +218,17 @@ export function ProductosScreen({ products, clients }: ProductosScreenProps) {
             ))}
           </div>
 
-          <div className="ejemplo-ticket-copies">
-            <span className="ejemplo-field-label">Tickets a imprimir</span>
-            <div className="ejemplo-chip-row">
-              <button
-                type="button"
-                className={`ejemplo-chip ejemplo-chip--small ${ticketCopies === 0 ? "is-selected" : ""}`}
-                onClick={() => setTicketCopies(0)}
-                title="Registra la venta pero no imprime nada"
-              >
-                0 tick
-              </button>
-              <button
-                type="button"
-                className={`ejemplo-chip ejemplo-chip--small ${ticketCopies === 1 ? "is-selected" : ""}`}
-                onClick={() => setTicketCopies(1)}
-                title="Solo el ticket para el cliente"
-              >
-                1 tick
-              </button>
-              <button
-                type="button"
-                className={`ejemplo-chip ejemplo-chip--small ${ticketCopies === 3 ? "is-selected" : ""}`}
-                onClick={() => setTicketCopies(3)}
-                title="Cliente + comanda + archivo"
-              >
-                3 tick
-              </button>
-            </div>
-          </div>
-
-          <div className="ejemplo-cart__footer">
-            <strong>Total: ${cartTotal.toFixed(2)}</strong>
-            <div className="ejemplo-cart__actions">
-              <button type="button" className="ejemplo-button ejemplo-button--cobrar" onClick={() => openPayment()}>
-                {ticketCopies === 0 ? "Cobrar (sin ticket)" : "Cobrar"}
-              </button>
+          {/* Separado visualmente de la lista de arriba (fondo propio, ver
+              .ejemplo-cart__checkout en global.css) para que se note que es
+              otra parte: el total y el cobro, no otro producto mas. */}
+          <div className="ejemplo-cart__checkout">
+            <div className="ejemplo-cart__footer">
+              <strong>Total: ${cartTotal.toFixed(2)}</strong>
+              <div className="ejemplo-cart__actions">
+                <button type="button" className="ejemplo-button ejemplo-button--cobrar" onClick={() => openPayment()}>
+                  Cobrar
+                </button>
+              </div>
             </div>
           </div>
         </article>
@@ -248,7 +248,7 @@ export function ProductosScreen({ products, clients }: ProductosScreenProps) {
       {showPaymentModal && cart.length ? (
         <PaymentMethodModal
           total={cartTotal}
-          clients={clients}
+          mockClients={mockClients}
           isSubmitting={isSubmittingSale}
           onConfirm={handleConfirmSale}
           onClose={() => setShowPaymentModal(false)}

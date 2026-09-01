@@ -2,13 +2,85 @@ import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { createClient, deleteClient, listAccountEntries, settleAccountEntries } from "../ejemplo.client";
 import { EjemploAccountEntry, EjemploClient } from "../ejemplo.types";
+import { MockClient, getMockClientTotal } from "../ejemplo.mockClients";
+import { printAccountSettlementTicket } from "../services/ejemplo.print";
 
 type ClientesScreenProps = {
   clients: EjemploClient[];
   onClientsChange: (clients: EjemploClient[]) => void;
+  mockClients: MockClient[];
+  onSettleMockClient: (clientId: string) => void;
 };
 
-export function ClientesScreen({ clients, onClientsChange }: ClientesScreenProps) {
+// Panel de "cuenta cliente" ficticia (ver ejemplo.mockClients.ts): muestra
+// los 3 clientes de prueba con su historial inventado y un boton "Pago"
+// que imprime el ticket de saldo y borra la deuda en memoria -- al
+// recargar la pagina vuelve a aparecer la deuda original (nada de esto se
+// guarda en el backend todavia).
+function MockClientsPanel({ mockClients, onSettleMockClient }: { mockClients: MockClient[]; onSettleMockClient: (clientId: string) => void }) {
+  const [payingClientId, setPayingClientId] = useState<string | null>(null);
+
+  async function handlePay(client: MockClient) {
+    if (!client.purchases.length || payingClientId) return;
+    setPayingClientId(client.id);
+    try {
+      await printAccountSettlementTicket(client);
+      onSettleMockClient(client.id);
+      toast.success(`Cuenta de ${client.name} saldada.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo imprimir el ticket de pago.");
+    } finally {
+      setPayingClientId(null);
+    }
+  }
+
+  return (
+    <article className="ejemplo-panel ejemplo-mock-clients">
+      <h2>Cuenta cliente (prueba)</h2>
+      <p className="ejemplo-hint">
+        Datos ficticios para probar el flujo -- al recargar la pagina vuelven a su estado original.
+      </p>
+      <div className="ejemplo-client-list">
+        {mockClients.map((client) => {
+          const total = getMockClientTotal(client);
+          return (
+            <div key={client.id} className="ejemplo-mock-client-card">
+              <div className="ejemplo-mock-client-card__header">
+                <strong>{client.name}</strong>
+                <span className={total > 0 ? "ejemplo-tag ejemplo-tag--pending" : "ejemplo-tag ejemplo-tag--ok"}>
+                  {total > 0 ? `Debe $${total.toFixed(2)}` : "Al dia"}
+                </span>
+              </div>
+              {client.purchases.length ? (
+                <div className="ejemplo-entries-list">
+                  {client.purchases.map((purchase) => (
+                    <div key={purchase.id} className="ejemplo-entry-row">
+                      <span>{purchase.dateLabel}</span>
+                      <span>{purchase.productName}</span>
+                      <strong>${purchase.amount.toFixed(2)}</strong>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="ejemplo-empty">Sin compras pendientes.</p>
+              )}
+              <button
+                type="button"
+                className="ejemplo-button"
+                onClick={() => void handlePay(client)}
+                disabled={!client.purchases.length || payingClientId === client.id}
+              >
+                {payingClientId === client.id ? "Imprimiendo..." : "Pago"}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </article>
+  );
+}
+
+export function ClientesScreen({ clients, onClientsChange, mockClients, onSettleMockClient }: ClientesScreenProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedClientId, setSelectedClientId] = useState("");
   const [entries, setEntries] = useState<EjemploAccountEntry[]>([]);
@@ -86,8 +158,12 @@ export function ClientesScreen({ clients, onClientsChange }: ClientesScreenProps
   }
 
   return (
-    <section className="ejemplo-screen ejemplo-clients-layout">
+    <section className="ejemplo-screen">
+      <MockClientsPanel mockClients={mockClients} onSettleMockClient={onSettleMockClient} />
+
+      <section className="ejemplo-clients-layout">
       <article className="ejemplo-panel">
+        <h2>Contactos</h2>
         <div className="ejemplo-toolbar">
           <input
             className="ejemplo-search"
@@ -173,6 +249,7 @@ export function ClientesScreen({ clients, onClientsChange }: ClientesScreenProps
           <p className="ejemplo-empty">Elegi un cliente para ver su cuenta corriente.</p>
         )}
       </article>
+      </section>
     </section>
   );
 }

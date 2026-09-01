@@ -1,8 +1,9 @@
 import qz from "qz-tray";
 import { API_BASE_URL } from "../../../shared/config/api";
 import { printRawLinesByWebUsb } from "./ejemplo.webusbPrint";
-import { buildSaleTicketLines } from "./ejemplo.ticketFormat";
+import { buildAccountSettlementTicketLines, buildSaleTicketLines } from "./ejemplo.ticketFormat";
 import { EjemploSale } from "../ejemplo.types";
+import { MockClient } from "../ejemplo.mockClients";
 
 // Impresion via QZ Tray con comandos ESC/POS crudos (igual que joker), para
 // que el ticket salga nitido y con corte de papel en la termica -- el
@@ -133,8 +134,23 @@ async function printRawLinesByQz(lines: string[]) {
   return { printerName: cachedPrinterName };
 }
 
-export async function printSaleTicket(sales: EjemploSale[], clientName: string | undefined, copies: 0 | 1 | 3 = 1) {
+export async function printSaleTicket(sales: EjemploSale[], clientName: string | undefined, copies: 0 | 1 | 2 | 3 = 2) {
   const lines = buildSaleTicketLines(sales, clientName, copies);
+  if (!lines.length) return;
+
+  if (cachedPrintMethod === "webusb") {
+    await printRawLinesByWebUsb(lines);
+    return;
+  }
+
+  await printRawLinesByQz(lines);
+}
+
+// Ticket de "Pago" de cuenta cliente (ver ClientesScreen.tsx / boton
+// "Pago" en cada cliente de prueba) -- misma logica de despacho qz/webusb
+// que el ticket de venta.
+export async function printAccountSettlementTicket(client: MockClient) {
+  const lines = buildAccountSettlementTicketLines(client);
   if (!lines.length) return;
 
   if (cachedPrintMethod === "webusb") {
