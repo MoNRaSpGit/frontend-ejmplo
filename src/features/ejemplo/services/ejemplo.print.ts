@@ -64,17 +64,27 @@ export function clearPreferredPrinterName() {
   window.localStorage.removeItem(PREFERRED_PRINTER_STORAGE_KEY);
 }
 
-// Metodo de impresion elegido a mano por el operario (no se detecta solo):
-// "qz" para PC de escritorio con QZ Tray instalado, "webusb" para
-// tablet/Android conectado por cable USB a la impresora, sin QZ de por
-// medio. Se elige una vez desde "Impresora" y queda guardado.
+// Metodo de impresion: "qz" para PC de escritorio con QZ Tray instalado,
+// "webusb" para tablet/celular Android conectado por cable USB a la
+// impresora, sin QZ de por medio (QZ Tray no corre en Android). El
+// operario lo puede cambiar a mano desde "Impresora" y esa eleccion
+// queda guardada -- pero mientras no haya elegido nada todavia, arranca
+// en "webusb" si el dispositivo es Android (asi una tablet que nunca
+// entro a configurar la impresora no sale tirando el error de QZ, que
+// nunca va a poder conectar ahi).
 export type PrintMethod = "qz" | "webusb";
 const PRINT_METHOD_STORAGE_KEY = "ejemplo.print.method";
+
+function guessDefaultPrintMethod(): PrintMethod {
+  if (typeof navigator === "undefined") return "qz";
+  return /android/i.test(navigator.userAgent) ? "webusb" : "qz";
+}
 
 function readPrintMethod(): PrintMethod {
   if (typeof window === "undefined") return "qz";
   const stored = window.localStorage.getItem(PRINT_METHOD_STORAGE_KEY);
-  return stored === "webusb" ? "webusb" : "qz";
+  if (stored === "webusb" || stored === "qz") return stored;
+  return guessDefaultPrintMethod();
 }
 
 let cachedPrintMethod: PrintMethod = readPrintMethod();

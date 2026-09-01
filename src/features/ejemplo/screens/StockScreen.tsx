@@ -121,12 +121,12 @@ export function StockScreen({ rubro, products, onProductsChange }: StockScreenPr
             {newProductForm.imageUrl ? (
               <img src={newProductForm.imageUrl} alt="" />
             ) : (
-              <ImagePlus size={26} strokeWidth={1.5} />
+              <ImagePlus size={34} strokeWidth={1.5} />
             )}
           </div>
           <div className="ejemplo-image-picker__actions">
             <label className="ejemplo-button ejemplo-button--ghost ejemplo-button--icon-text">
-              <ImagePlus size={16} strokeWidth={2} />
+              <ImagePlus size={21} strokeWidth={2} />
               {isProcessingImage ? "Procesando..." : newProductForm.imageUrl ? "Cambiar foto" : "Elegir foto"}
               <input
                 type="file"
@@ -142,7 +142,7 @@ export function StockScreen({ rubro, products, onProductsChange }: StockScreenPr
                 className="ejemplo-button--icon"
                 onClick={() => setNewProductForm((current) => ({ ...current, imageUrl: "" }))}
               >
-                <X size={16} strokeWidth={2} />
+                <X size={21} strokeWidth={2} />
               </button>
             ) : null}
           </div>
@@ -167,7 +167,7 @@ export function StockScreen({ rubro, products, onProductsChange }: StockScreenPr
                   <img className="ejemplo-product-card__image" src={product.imageUrl} alt="" />
                 ) : (
                   <div className="ejemplo-product-card__image-placeholder">
-                    <ImagePlus size={28} strokeWidth={1.5} />
+                    <ImagePlus size={36} strokeWidth={1.5} />
                   </div>
                 )}
                 <div className="ejemplo-product-card__body">
@@ -182,7 +182,7 @@ export function StockScreen({ rubro, products, onProductsChange }: StockScreenPr
                       onClick={() => handleDeleteProduct(product.id)}
                       aria-label={`Eliminar ${product.name}`}
                     >
-                      <X size={16} strokeWidth={2} />
+                      <X size={21} strokeWidth={2} />
                     </button>
                   </div>
                 </div>

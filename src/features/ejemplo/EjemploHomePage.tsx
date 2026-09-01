@@ -136,7 +136,7 @@ export function EjemploHomePage() {
         <div className="ejemplo-topbar__inner">
           <div className="ejemplo-brand">
             <span className="ejemplo-brand__mark" aria-hidden="true">
-              <Store size={20} strokeWidth={2} />
+              <Store size={26} strokeWidth={2} />
             </span>
             <div>
               <strong>{BRAND_PLACEHOLDER}</strong>
@@ -151,8 +151,8 @@ export function EjemploHomePage() {
               aria-expanded={isMenuOpen}
               aria-label="Abrir menu"
             >
-              <UserRound size={16} strokeWidth={2} />
-              <Menu size={16} strokeWidth={2} />
+              <UserRound size={21} strokeWidth={2} />
+              <Menu size={21} strokeWidth={2} />
             </button>
 
             {isMenuOpen ? (
@@ -176,7 +176,7 @@ export function EjemploHomePage() {
                     setIsMenuOpen(false);
                   }}
                 >
-                  <Printer size={16} strokeWidth={2} />
+                  <Printer size={21} strokeWidth={2} />
                   {printerButtonLabel}
                 </button>
               </div>
@@ -196,7 +196,7 @@ export function EjemploHomePage() {
 
       <nav className="ejemplo-sidebar" aria-label="Secciones">
         <span className="ejemplo-sidebar__mark" aria-hidden="true">
-          <Store size={20} strokeWidth={2} />
+          <Store size={26} strokeWidth={2} />
         </span>
         <div className="ejemplo-sidebar__divider" />
         <ul className="ejemplo-sidebar__list">
@@ -212,7 +212,7 @@ export function EjemploHomePage() {
                   aria-current={isActive ? "page" : undefined}
                   title={VIEW_LABELS[mode]}
                 >
-                  <Icon size={20} strokeWidth={2} />
+                  <Icon size={26} strokeWidth={2} />
                   <span className="ejemplo-sidebar__label">{VIEW_LABELS[mode]}</span>
                 </button>
               </li>

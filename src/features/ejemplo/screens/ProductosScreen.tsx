@@ -141,7 +141,7 @@ export function ProductosScreen({ products, clients }: ProductosScreenProps) {
                 <img className="ejemplo-product-card__image" src={product.imageUrl} alt="" />
               ) : (
                 <div className="ejemplo-product-card__image-placeholder">
-                  <ImagePlus size={28} strokeWidth={1.5} />
+                  <ImagePlus size={36} strokeWidth={1.5} />
                 </div>
               )}
               <div className="ejemplo-product-card__body">
@@ -187,7 +187,7 @@ export function ProductosScreen({ products, clients }: ProductosScreenProps) {
                   onClick={() => removeFromCart(line.key)}
                   aria-label={`Quitar ${line.product.name}`}
                 >
-                  <X size={16} strokeWidth={2} />
+                  <X size={21} strokeWidth={2} />
                 </button>
               </div>
             ))}

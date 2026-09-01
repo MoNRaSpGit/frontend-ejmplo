@@ -15,10 +15,11 @@ type PrinterSettingsModalProps = {
   onPrinterChange: (name: string | null) => void;
 };
 
-// Dos formas de imprimir, elegidas a mano (no se detectan solas): "PC de
-// escritorio" via QZ Tray, o "Tablet / Android" directo por USB sin QZ de
-// por medio. El operario elige una vez y queda guardada -- ver
-// getPrintMethod/setPrintMethod en ejemplo.print.ts.
+// Dos formas de imprimir: "PC" via QZ Tray, o "Tablet / Celular" directo
+// por USB sin QZ de por medio (QZ Tray no corre en Android). Arranca
+// adivinada segun el dispositivo (ver guessDefaultPrintMethod en
+// ejemplo.print.ts) pero el operario la puede cambiar a mano aca, y esa
+// eleccion manual queda guardada para siempre.
 export function PrinterSettingsModal({ currentPrinterName, onClose, onPrinterChange }: PrinterSettingsModalProps) {
   const [method, setMethod] = useState<PrintMethod>(getPrintMethod());
   const [printers, setPrinters] = useState<string[]>([]);
@@ -98,14 +99,14 @@ export function PrinterSettingsModal({ currentPrinterName, onClose, onPrinterCha
             className={`ejemplo-chip ${method === "qz" ? "is-selected" : ""}`}
             onClick={() => handleChangeMethod("qz")}
           >
-            PC de escritorio
+            PC
           </button>
           <button
             type="button"
             className={`ejemplo-chip ${method === "webusb" ? "is-selected" : ""}`}
             onClick={() => handleChangeMethod("webusb")}
           >
-            Tablet / Android
+            Tablet / Celular
           </button>
         </div>
 
@@ -160,7 +161,7 @@ export function PrinterSettingsModal({ currentPrinterName, onClose, onPrinterCha
               <p className="ejemplo-empty">Este navegador no soporta USB directo (probalo con Chrome en Android).</p>
             ) : (
               <>
-                <p className="ejemplo-hint">Conecta la impresora termica por USB a la tablet antes de elegirla.</p>
+                <p className="ejemplo-hint">Conecta la impresora termica por USB a la tablet o celular antes de elegirla.</p>
                 {error ? <p className="ejemplo-empty">{error}</p> : null}
                 <button
                   type="button"
