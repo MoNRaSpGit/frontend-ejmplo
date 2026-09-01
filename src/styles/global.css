@@ -830,7 +830,7 @@ h3 {
 
 .ejemplo-modal__dialog {
   position: relative;
-  width: min(440px, 92vw);
+  width: min(560px, 94vw);
   background: var(--ej-surface);
   border-radius: var(--ej-radius-lg);
   padding: 26px;
@@ -851,24 +851,34 @@ h3 {
 
 .ejemplo-payment-chips {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
 }
 
 .ejemplo-chip {
-  padding: 10px 16px;
+  flex: 1 1 0;
+  padding: 10px 6px;
   border-radius: 999px;
   border: 1px solid var(--ej-border);
   background: var(--ej-surface);
   cursor: pointer;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .ejemplo-chip.is-selected {
   border-color: var(--ej-accent);
   background: var(--ej-accent);
   color: #fffaf2;
+}
+
+@media (max-width: 420px) {
+  .ejemplo-chip {
+    padding: 9px 4px;
+    font-size: 11px;
+  }
 }
 
 .ejemplo-modal__footer {

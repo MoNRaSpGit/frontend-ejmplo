@@ -7,17 +7,22 @@ type PaymentMethodModalProps = {
   total: number;
   clients: EjemploClient[];
   isSubmitting: boolean;
-  onConfirm: (paymentMethod: EjemploPaymentMethod, clientId?: string) => void;
+  onConfirm: (paymentMethod: EjemploPaymentMethod, clientId?: string, customerName?: string) => void;
   onClose: () => void;
 };
 
 export function PaymentMethodModal({ total, clients, isSubmitting, onConfirm, onClose }: PaymentMethodModalProps) {
   const [method, setMethod] = useState<EjemploPaymentMethod>("efectivo");
   const [clientId, setClientId] = useState("");
+  const [customerName, setCustomerName] = useState("");
 
   function handleConfirm() {
     if (method === "cuenta" && !clientId) return;
-    onConfirm(method, method === "cuenta" ? clientId : undefined);
+    onConfirm(
+      method,
+      method === "cuenta" ? clientId : undefined,
+      method === "cuenta" ? undefined : customerName.trim() || undefined
+    );
   }
 
   return (
@@ -52,7 +57,16 @@ export function PaymentMethodModal({ total, clients, isSubmitting, onConfirm, on
               ))}
             </select>
           </label>
-        ) : null}
+        ) : (
+          <label className="ejemplo-field">
+            <span>Nombre del cliente (opcional)</span>
+            <input
+              value={customerName}
+              onChange={(event) => setCustomerName(event.target.value)}
+              placeholder="Ej: Juan"
+            />
+          </label>
+        )}
 
         <div className="ejemplo-modal__footer">
           <button type="button" className="ejemplo-button ejemplo-button--ghost" onClick={onClose}>

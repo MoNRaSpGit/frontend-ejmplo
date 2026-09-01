@@ -42,7 +42,10 @@ export function buildSaleTicketLines(sales: EjemploSale[], clientName?: string) 
   lines.push(ALIGN_LEFT);
   lines.push(`${decorativeBorder()}\n`);
   lines.push(BOLD_ON, TALL_SIZE_ON);
-  lines.push(`Cliente: ${clientName?.trim() || "-"}\n`);
+  const trimmedClientName = clientName?.trim();
+  if (trimmedClientName) {
+    lines.push(`Cliente: ${trimmedClientName}\n`);
+  }
   lines.push(`Pago: ${PAYMENT_METHOD_LABELS[first.paymentMethod]}\n`);
   lines.push(DOUBLE_SIZE_OFF, BOLD_OFF);
   lines.push(`${decorativeBorder()}\n`);

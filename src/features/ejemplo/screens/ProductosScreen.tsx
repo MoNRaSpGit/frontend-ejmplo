@@ -24,7 +24,6 @@ export function ProductosScreen({ rubro, products, clients, onProductsChange }: 
   const [searchTerm, setSearchTerm] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [printTicket, setPrintTicket] = useState(true);
   const [isSubmittingSale, setIsSubmittingSale] = useState(false);
 
   const [showNewProductForm, setShowNewProductForm] = useState(false);
@@ -72,13 +71,12 @@ export function ProductosScreen({ rubro, products, clients, onProductsChange }: 
     setCart((current) => current.filter((line) => line.product.id !== productId));
   }
 
-  function openPayment(withTicket: boolean) {
+  function openPayment() {
     if (!cart.length) return;
-    setPrintTicket(withTicket);
     setShowPaymentModal(true);
   }
 
-  async function handleConfirmSale(paymentMethod: EjemploPaymentMethod, clientId?: string) {
+  async function handleConfirmSale(paymentMethod: EjemploPaymentMethod, clientId?: string, customerName?: string) {
     if (!cart.length) return;
 
     setIsSubmittingSale(true);
@@ -94,16 +92,17 @@ export function ProductosScreen({ rubro, products, clients, onProductsChange }: 
         sales.push(sale);
       }
       toast.success("Venta registrada.");
-      if (printTicket) {
-        const client = clientId ? clients.find((item) => item.id === clientId) : undefined;
-        try {
-          await printSaleTicket(sales, client?.name);
-        } catch (printError) {
-          // La venta ya quedo registrada; solo fallo la impresion.
-          toast.error(
-            printError instanceof Error ? printError.message : "La venta se registro pero no se pudo imprimir el ticket."
-          );
-        }
+      // Cobrar siempre imprime el ticket -- si el cliente eligio cuenta
+      // corriente el nombre sale del cliente elegido, si no, del campo
+      // "Nombre del cliente" opcional (o nada, si lo dejo en blanco).
+      const client = clientId ? clients.find((item) => item.id === clientId) : undefined;
+      try {
+        await printSaleTicket(sales, client?.name ?? customerName);
+      } catch (printError) {
+        // La venta ya quedo registrada; solo fallo la impresion.
+        toast.error(
+          printError instanceof Error ? printError.message : "La venta se registro pero no se pudo imprimir el ticket."
+        );
       }
       setShowPaymentModal(false);
       setCart([]);
@@ -334,11 +333,8 @@ export function ProductosScreen({ rubro, products, clients, onProductsChange }: 
           <div className="ejemplo-cart__footer">
             <strong>Total: ${cartTotal.toFixed(2)}</strong>
             <div className="ejemplo-cart__actions">
-              <button type="button" className="ejemplo-button ejemplo-button--ghost" onClick={() => openPayment(false)}>
+              <button type="button" className="ejemplo-button" onClick={() => openPayment()}>
                 Cobrar
-              </button>
-              <button type="button" className="ejemplo-button" onClick={() => openPayment(true)}>
-                Cobrar con ticket
               </button>
             </div>
           </div>
