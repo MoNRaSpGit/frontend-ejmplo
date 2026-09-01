@@ -2,34 +2,22 @@ import { ImagePlus, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { PaymentMethodModal } from "../components/PaymentMethodModal";
-import { createProduct, createSale, deleteProduct } from "../ejemplo.client";
-import { fileToCompressedDataUrl } from "../services/ejemplo.image";
+import { createSale } from "../ejemplo.client";
 import { printSaleTicket } from "../services/ejemplo.print";
 import { EjemploClient, EjemploPaymentMethod, EjemploProduct, EjemploSale } from "../ejemplo.types";
 
 type ProductosScreenProps = {
-  rubro: string;
   products: EjemploProduct[];
   clients: EjemploClient[];
-  onProductsChange: (products: EjemploProduct[]) => void;
 };
 
 type CartLine = { product: EjemploProduct; quantity: number };
 
-function emptyForm(rubro: string) {
-  return { rubro, category: "", name: "", price: "", description: "", imageUrl: "" };
-}
-
-export function ProductosScreen({ rubro, products, clients, onProductsChange }: ProductosScreenProps) {
+export function ProductosScreen({ products, clients }: ProductosScreenProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isSubmittingSale, setIsSubmittingSale] = useState(false);
-
-  const [showNewProductForm, setShowNewProductForm] = useState(false);
-  const [newProductForm, setNewProductForm] = useState(emptyForm(rubro));
-  const [isSavingProduct, setIsSavingProduct] = useState(false);
-  const [isProcessingImage, setIsProcessingImage] = useState(false);
 
   const term = searchTerm.trim().toLowerCase();
 
@@ -113,58 +101,6 @@ export function ProductosScreen({ rubro, products, clients, onProductsChange }: 
     }
   }
 
-  async function handleCreateProduct() {
-    if (!newProductForm.category.trim() || !newProductForm.name.trim() || !newProductForm.price) {
-      toast.error("Completa categoria, nombre y precio.");
-      return;
-    }
-
-    setIsSavingProduct(true);
-    try {
-      const item = await createProduct({
-        rubro,
-        category: newProductForm.category.trim(),
-        name: newProductForm.name.trim(),
-        price: Number(newProductForm.price),
-        description: newProductForm.description.trim(),
-        imageUrl: newProductForm.imageUrl || undefined
-      });
-      onProductsChange([...products, item]);
-      setNewProductForm(emptyForm(rubro));
-      setShowNewProductForm(false);
-      toast.success("Producto agregado.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "No se pudo agregar el producto.");
-    } finally {
-      setIsSavingProduct(false);
-    }
-  }
-
-  async function handleImageFileChange(file: File | undefined) {
-    if (!file) return;
-
-    setIsProcessingImage(true);
-    try {
-      const dataUrl = await fileToCompressedDataUrl(file);
-      setNewProductForm((current) => ({ ...current, imageUrl: dataUrl }));
-    } catch {
-      toast.error("No se pudo procesar la imagen.");
-    } finally {
-      setIsProcessingImage(false);
-    }
-  }
-
-  async function handleDeleteProduct(productId: string) {
-    try {
-      await deleteProduct(productId);
-      onProductsChange(products.filter((product) => product.id !== productId));
-      removeFromCart(productId);
-      toast.success("Producto eliminado.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "No se pudo eliminar el producto.");
-    }
-  }
-
   return (
     <section className="ejemplo-screen">
       <div className="ejemplo-toolbar">
@@ -174,91 +110,7 @@ export function ProductosScreen({ rubro, products, clients, onProductsChange }: 
           onChange={(event) => setSearchTerm(event.target.value)}
           placeholder="Escribi el nombre del producto..."
         />
-        <button
-          type="button"
-          className="ejemplo-button ejemplo-button--ghost"
-          onClick={() => {
-            setShowNewProductForm((current) => !current);
-            setNewProductForm(emptyForm(rubro));
-          }}
-        >
-          {showNewProductForm ? "Cerrar" : "+ Nuevo producto"}
-        </button>
       </div>
-
-      {showNewProductForm ? (
-        <article className="ejemplo-panel">
-          <div className="ejemplo-form-grid">
-            <label className="ejemplo-field">
-              <span>Categoria</span>
-              <input
-                value={newProductForm.category}
-                onChange={(event) => setNewProductForm((current) => ({ ...current, category: event.target.value }))}
-              />
-            </label>
-            <label className="ejemplo-field">
-              <span>Nombre</span>
-              <input
-                value={newProductForm.name}
-                onChange={(event) => setNewProductForm((current) => ({ ...current, name: event.target.value }))}
-              />
-            </label>
-            <label className="ejemplo-field">
-              <span>Precio</span>
-              <input
-                type="number"
-                min="0"
-                value={newProductForm.price}
-                onChange={(event) => setNewProductForm((current) => ({ ...current, price: event.target.value }))}
-              />
-            </label>
-            <label className="ejemplo-field">
-              <span>Descripcion</span>
-              <input
-                value={newProductForm.description}
-                onChange={(event) => setNewProductForm((current) => ({ ...current, description: event.target.value }))}
-              />
-            </label>
-          </div>
-
-          <div className="ejemplo-image-picker">
-            <span className="ejemplo-field-label">Foto del producto (opcional)</span>
-            <div className="ejemplo-image-picker__preview">
-              {newProductForm.imageUrl ? (
-                <img src={newProductForm.imageUrl} alt="" />
-              ) : (
-                <ImagePlus size={26} strokeWidth={1.5} />
-              )}
-            </div>
-            <div className="ejemplo-image-picker__actions">
-              <label className="ejemplo-button ejemplo-button--ghost ejemplo-button--icon-text">
-                <ImagePlus size={16} strokeWidth={2} />
-                {isProcessingImage ? "Procesando..." : newProductForm.imageUrl ? "Cambiar foto" : "Elegir foto"}
-                <input
-                  type="file"
-                  accept="image/*"
-                  hidden
-                  disabled={isProcessingImage}
-                  onChange={(event) => void handleImageFileChange(event.target.files?.[0])}
-                />
-              </label>
-              {newProductForm.imageUrl ? (
-                <button
-                  type="button"
-                  className="ejemplo-button--icon"
-                  onClick={() => setNewProductForm((current) => ({ ...current, imageUrl: "" }))}
-                >
-                  <X size={16} strokeWidth={2} />
-                </button>
-              ) : null}
-            </div>
-          </div>
-
-          <button type="button" className="ejemplo-button" onClick={handleCreateProduct} disabled={isSavingProduct}>
-            {isSavingProduct ? "Guardando..." : "Guardar producto"}
-          </button>
-        </article>
-      ) : null}
 
       {term ? (
         <div className="ejemplo-product-grid">
@@ -277,17 +129,6 @@ export function ProductosScreen({ rubro, products, clients, onProductsChange }: 
                 {product.description ? <p>{product.description}</p> : null}
                 <div className="ejemplo-product-card__footer">
                   <strong>${product.price.toFixed(2)}</strong>
-                  <button
-                    type="button"
-                    className="ejemplo-button--icon"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      handleDeleteProduct(product.id);
-                    }}
-                    aria-label={`Eliminar ${product.name}`}
-                  >
-                    <X size={16} strokeWidth={2} />
-                  </button>
                 </div>
               </div>
             </article>

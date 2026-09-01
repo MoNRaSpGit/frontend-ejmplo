@@ -533,6 +533,15 @@ h3 {
   box-shadow: 0 0 0 2px var(--ej-accent-soft), var(--ej-shadow);
 }
 
+.ejemplo-product-card--static {
+  cursor: default;
+}
+
+.ejemplo-product-card--static:hover {
+  box-shadow: var(--ej-shadow-sm);
+  transform: none;
+}
+
 .ejemplo-product-card__image {
   width: 100%;
   height: 140px;

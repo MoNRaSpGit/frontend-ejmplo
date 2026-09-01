@@ -1,29 +1,32 @@
-import { LayoutDashboard, Menu, Printer, ShoppingBag, UserRound, Users } from "lucide-react";
+import { Boxes, LayoutDashboard, Menu, Printer, ShoppingBag, UserRound, Users } from "lucide-react";
 import { useEffect, useRef, useState, type ComponentType } from "react";
 import { toast } from "react-toastify";
 import { listClients, listProducts, listRubros } from "./ejemplo.client";
 import { ClientesScreen } from "./screens/ClientesScreen";
 import { PanelScreen } from "./screens/PanelScreen";
 import { ProductosScreen } from "./screens/ProductosScreen";
+import { StockScreen } from "./screens/StockScreen";
 import { PrinterSettingsModal } from "./components/PrinterSettingsModal";
 import { getPreferredPrinterName } from "./services/ejemplo.print";
 import { EjemploClient, EjemploProduct } from "./ejemplo.types";
 
-type ViewMode = "productos" | "clientes" | "panel";
+type ViewMode = "productos" | "stock" | "clientes" | "panel";
 
 const VIEW_LABELS: Record<ViewMode, string> = {
   productos: "Productos",
+  stock: "Stock",
   clientes: "Clientes",
   panel: "Panel de control"
 };
 
 const VIEW_ICONS: Record<ViewMode, ComponentType<{ size?: number; strokeWidth?: number }>> = {
   productos: ShoppingBag,
+  stock: Boxes,
   clientes: Users,
   panel: LayoutDashboard
 };
 
-const VIEW_ORDER: ViewMode[] = ["productos", "clientes", "panel"];
+const VIEW_ORDER: ViewMode[] = ["productos", "stock", "clientes", "panel"];
 
 function capitalize(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
@@ -158,8 +161,9 @@ export function EjemploHomePage() {
       </header>
 
       <main className="ejemplo-shell">
-        {viewMode === "productos" ? (
-          <ProductosScreen rubro={rubro} products={products} clients={clients} onProductsChange={setProducts} />
+        {viewMode === "productos" ? <ProductosScreen products={products} clients={clients} /> : null}
+        {viewMode === "stock" ? (
+          <StockScreen rubro={rubro} products={products} onProductsChange={setProducts} />
         ) : null}
         {viewMode === "clientes" ? <ClientesScreen clients={clients} onClientsChange={setClients} /> : null}
         {viewMode === "panel" ? <PanelScreen rubro={rubro} /> : null}
