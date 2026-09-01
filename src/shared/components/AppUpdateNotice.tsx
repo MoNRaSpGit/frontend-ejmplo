@@ -1,19 +1,43 @@
 import { useEffect, useRef, useState } from "react";
 import { fetchPublishedFrontendBuildMeta, FRONTEND_BUILD_INFO } from "../config/build";
+import { isAppIdle } from "../state/appActivity";
 
 const UPDATE_CHECK_INTERVAL_MS = 2 * 60 * 1000;
+const IDLE_RETRY_INTERVAL_MS = 15 * 1000;
+const APP_CACHE_PREFIX = "ejemplo-";
+
+// Misma logica que frontend-joker (probada, sin el problema de quedarse
+// "colgada" esperando que el service worker nuevo termine de instalar):
+// en vez de eso, directo desregistra el service worker actual y borra el
+// cache de la app, y recarga. Como el sw.js de esta app (public/sw.js) ya
+// hace skipWaiting + clients.claim solo, el proximo load ya arranca
+// limpio -- no hace falta coordinar nada mas.
+async function applyUpdate() {
+  try {
+    if ("serviceWorker" in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      const appBasePath = new URL(import.meta.env.BASE_URL, window.location.href).pathname;
+      await Promise.all(
+        registrations
+          .filter((registration) => registration.scope.includes(appBasePath))
+          .map((registration) => registration.unregister())
+      );
+    }
+
+    if ("caches" in window) {
+      const keys = await window.caches.keys();
+      await Promise.all(keys.filter((key) => key.startsWith(APP_CACHE_PREFIX)).map((key) => window.caches.delete(key)));
+    }
+  } catch {
+    // Si la limpieza falla, igual conviene forzar el reload para reintentar.
+  } finally {
+    window.location.reload();
+  }
+}
 
 export function AppUpdateNotice() {
   const [show, setShow] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
-  // Guarda la funcion que devuelve registerSW() -- llamarla con true hace
-  // que el service worker nuevo tome el control (skipWaiting) y recien
-  // ahi recarga la pagina. Antes se hacia un window.location.reload() a
-  // ciegas: si el service worker todavia no habia terminado de instalar
-  // la version nueva, el reload volvia a servir el cache viejo y el
-  // cartel de "hay una version nueva" seguia apareciendo -- por eso habia
-  // que apretar "Actualizar" varias veces.
-  const updateSwRef = useRef<((reloadPage?: boolean) => Promise<void>) | null>(null);
+  const appliedRef = useRef(false);
 
   useEffect(() => {
     if (!import.meta.env.PROD) {
@@ -21,44 +45,31 @@ export function AppUpdateNotice() {
       return;
     }
 
-    let cancelled = false;
-
-    import("virtual:pwa-register")
-      .then(({ registerSW }) => {
-        if (cancelled) return;
-        updateSwRef.current = registerSW({
-          onNeedRefresh() {
-            setShow(true);
-          }
-        });
-      })
-      .catch(() => {
-        // Si el modulo del service worker no carga (ej: navegador viejo),
-        // el aviso via app-build.json de mas abajo sigue funcionando
-        // igual, solo que el boton termina haciendo un reload comun.
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!import.meta.env.PROD) {
-      return;
-    }
-
     let mounted = true;
+
+    // Si la app esta idle (nadie escribiendo, sin venta en curso), no
+    // hace falta mostrarle nada al operario: se aplica sola. Si esta en
+    // uso, se prende el cartel y se sigue reintentando solo en segundo
+    // plano -- apenas quede libre, se aplica ahi tambien sin que nadie
+    // tenga que acordarse de tocar el boton.
     const checkForUpdates = async () => {
+      if (appliedRef.current) return;
+
       try {
         const published = await fetchPublishedFrontendBuildMeta();
-        if (!mounted) return;
-        if (published.releaseSha !== FRONTEND_BUILD_INFO.releaseSha) {
-          setShow(true);
+        if (!mounted || published.releaseSha === FRONTEND_BUILD_INFO.releaseSha) {
+          return;
         }
+
+        if (isAppIdle()) {
+          appliedRef.current = true;
+          await applyUpdate();
+          return;
+        }
+
+        setShow(true);
       } catch {
-        // Silencioso: si esta llamada falla, el aviso via el service
-        // worker (onNeedRefresh) sigue siendo la fuente principal.
+        // Silencioso: se reintenta solo en el proximo chequeo.
       }
     };
 
@@ -66,6 +77,16 @@ export function AppUpdateNotice() {
     const intervalId = window.setInterval(() => {
       void checkForUpdates();
     }, UPDATE_CHECK_INTERVAL_MS);
+
+    // Mientras el cartel esta visible (ya se detecto una version nueva
+    // pero la app estaba en uso), reintenta mas seguido si ahora quedo
+    // libre -- no hace falta esperar los 2 minutos del chequeo normal.
+    const idleRetryId = window.setInterval(() => {
+      if (show && !appliedRef.current && isAppIdle()) {
+        appliedRef.current = true;
+        void applyUpdate();
+      }
+    }, IDLE_RETRY_INTERVAL_MS);
 
     const handleVisibilityOrFocus = () => {
       if (document.visibilityState === "visible") {
@@ -79,25 +100,11 @@ export function AppUpdateNotice() {
     return () => {
       mounted = false;
       window.clearInterval(intervalId);
+      window.clearInterval(idleRetryId);
       window.removeEventListener("focus", handleVisibilityOrFocus);
       document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
     };
-  }, []);
-
-  async function handleUpdate() {
-    setIsUpdating(true);
-    try {
-      if (updateSwRef.current) {
-        // reloadPage=true: espera a que el nuevo service worker tome el
-        // control y recien ahi recarga -- un solo click alcanza.
-        await updateSwRef.current(true);
-        return;
-      }
-    } catch {
-      // Si algo falla, cae al reload comun de abajo.
-    }
-    window.location.reload();
-  }
+  }, [show]);
 
   if (!show) {
     return null;
@@ -106,8 +113,8 @@ export function AppUpdateNotice() {
   return (
     <aside style={noticeStyle}>
       <strong>Hay una version nueva disponible.</strong>
-      <button type="button" onClick={() => void handleUpdate()} disabled={isUpdating} style={buttonStyle}>
-        {isUpdating ? "Actualizando..." : "Actualizar"}
+      <button type="button" onClick={() => void applyUpdate()} style={buttonStyle}>
+        Actualizar
       </button>
     </aside>
   );

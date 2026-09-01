@@ -1,10 +1,11 @@
 import { ImagePlus, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { PaymentMethodModal } from "../components/PaymentMethodModal";
 import { createSale } from "../ejemplo.client";
 import { printSaleTicket } from "../services/ejemplo.print";
 import { EjemploClient, EjemploPaymentMethod, EjemploProduct, EjemploSale } from "../ejemplo.types";
+import { setAppBusy } from "../../../shared/state/appActivity";
 
 type ProductosScreenProps = {
   products: EjemploProduct[];
@@ -18,6 +19,14 @@ export function ProductosScreen({ products, clients }: ProductosScreenProps) {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isSubmittingSale, setIsSubmittingSale] = useState(false);
+
+  // Mientras haya algo en el carrito o el modal de cobro abierto, hay una
+  // venta en curso: AppUpdateNotice no debe recargar la pagina sola en
+  // ese momento (se perderia la venta a medio hacer).
+  useEffect(() => {
+    setAppBusy("productos-venta", cart.length > 0 || showPaymentModal);
+    return () => setAppBusy("productos-venta", false);
+  }, [cart.length, showPaymentModal]);
 
   const term = searchTerm.trim().toLowerCase();
 
