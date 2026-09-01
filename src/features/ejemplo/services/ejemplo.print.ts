@@ -1,4 +1,5 @@
 import qz from "qz-tray";
+import { API_BASE_URL } from "../../../shared/config/api";
 import { buildSaleTicketLines } from "./ejemplo.ticketFormat";
 import { EjemploSale } from "../ejemplo.types";
 
@@ -7,11 +8,39 @@ import { EjemploSale } from "../ejemplo.types";
 // window.print() de una pagina HTML salia clarito (rasterizado y ditheado
 // por el driver) y con los margenes cortados.
 //
-// Sin firma: este proyecto es una demo que se corre en una PC propia, asi
-// que QZ muestra un cartel "Permitir" una vez por sesion en vez de usar
-// certificado. No hay backend involucrado.
-
+// Firma cada conexion con el certificado del backend (mismo mecanismo y
+// mismo certificado que ya usa joker -- ver EjemploPrintingService en el
+// backend) para que QZ Tray confie en el sitio automaticamente: sin esto,
+// QZ muestra un cartel de "Signature (missing) / Validity (invalid)" en
+// cada conexion y no deja marcar "Recordar esta accion" de forma
+// permanente.
 const PREFERRED_PRINTER_STORAGE_KEY = "ejemplo.qz.preferredPrinter";
+
+let qzSecurityConfigured = false;
+
+function configureQzSecurity() {
+  if (qzSecurityConfigured) return;
+  qzSecurityConfigured = true;
+
+  qz.security.setCertificatePromise((resolve, reject) => {
+    fetch(`${API_BASE_URL}/api/v1/ejemplo/qz-certificate`)
+      .then((response) => (response.ok ? response.text() : Promise.reject(new Error("No se pudo obtener el certificado."))))
+      .then(resolve)
+      .catch(reject);
+  });
+
+  qz.security.setSignatureAlgorithm("SHA512");
+  qz.security.setSignaturePromise((toSign) => (resolve, reject) => {
+    fetch(`${API_BASE_URL}/api/v1/ejemplo/qz-sign`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ toSign })
+    })
+      .then((response) => (response.ok ? response.json() : Promise.reject(new Error("No se pudo firmar la conexion."))))
+      .then((data: { signature: string }) => resolve(data.signature))
+      .catch(reject);
+  });
+}
 
 function readPreferredPrinter(): string | null {
   if (typeof window === "undefined") return null;
@@ -35,6 +64,7 @@ export function clearPreferredPrinterName() {
 }
 
 async function ensureQzConnected() {
+  configureQzSecurity();
   if (!qz.websocket.isActive()) {
     await qz.websocket.connect();
   }
