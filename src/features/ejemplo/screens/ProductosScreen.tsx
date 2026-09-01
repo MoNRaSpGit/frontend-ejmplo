@@ -226,7 +226,7 @@ export function ProductosScreen({ products, clients }: ProductosScreenProps) {
           <div className="ejemplo-cart__footer">
             <strong>Total: ${cartTotal.toFixed(2)}</strong>
             <div className="ejemplo-cart__actions">
-              <button type="button" className="ejemplo-button" onClick={() => openPayment()}>
+              <button type="button" className="ejemplo-button ejemplo-button--cobrar" onClick={() => openPayment()}>
                 {ticketCopies === 0 ? "Cobrar (sin ticket)" : "Cobrar"}
               </button>
             </div>

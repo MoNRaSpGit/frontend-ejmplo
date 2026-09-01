@@ -466,6 +466,16 @@ h3 {
   background: var(--ej-accent-soft);
 }
 
+.ejemplo-button--cobrar {
+  background: #5c1a22;
+  border-color: #5c1a22;
+}
+
+.ejemplo-button--cobrar:hover:not(:disabled) {
+  background: #46141a;
+  border-color: #46141a;
+}
+
 .ejemplo-button--icon-text {
   display: inline-flex;
   align-items: center;
