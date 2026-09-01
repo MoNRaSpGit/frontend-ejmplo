@@ -1,5 +1,6 @@
 import qz from "qz-tray";
 import { API_BASE_URL } from "../../../shared/config/api";
+import { printRawLinesByWebUsb } from "./ejemplo.webusbPrint";
 import { buildSaleTicketLines } from "./ejemplo.ticketFormat";
 import { EjemploSale } from "../ejemplo.types";
 
@@ -63,6 +64,30 @@ export function clearPreferredPrinterName() {
   window.localStorage.removeItem(PREFERRED_PRINTER_STORAGE_KEY);
 }
 
+// Metodo de impresion elegido a mano por el operario (no se detecta solo):
+// "qz" para PC de escritorio con QZ Tray instalado, "webusb" para
+// tablet/Android conectado por cable USB a la impresora, sin QZ de por
+// medio. Se elige una vez desde "Impresora" y queda guardado.
+export type PrintMethod = "qz" | "webusb";
+const PRINT_METHOD_STORAGE_KEY = "ejemplo.print.method";
+
+function readPrintMethod(): PrintMethod {
+  if (typeof window === "undefined") return "qz";
+  const stored = window.localStorage.getItem(PRINT_METHOD_STORAGE_KEY);
+  return stored === "webusb" ? "webusb" : "qz";
+}
+
+let cachedPrintMethod: PrintMethod = readPrintMethod();
+
+export function getPrintMethod() {
+  return cachedPrintMethod;
+}
+
+export function setPrintMethod(method: PrintMethod) {
+  cachedPrintMethod = method;
+  window.localStorage.setItem(PRINT_METHOD_STORAGE_KEY, method);
+}
+
 async function ensureQzConnected() {
   configureQzSecurity();
   if (!qz.websocket.isActive()) {
@@ -98,8 +123,14 @@ async function printRawLinesByQz(lines: string[]) {
   return { printerName: cachedPrinterName };
 }
 
-export async function printSaleTicket(sales: EjemploSale[], clientName?: string) {
-  const lines = buildSaleTicketLines(sales, clientName);
+export async function printSaleTicket(sales: EjemploSale[], clientName: string | undefined, copies: 0 | 1 | 3 = 1) {
+  const lines = buildSaleTicketLines(sales, clientName, copies);
   if (!lines.length) return;
+
+  if (cachedPrintMethod === "webusb") {
+    await printRawLinesByWebUsb(lines);
+    return;
+  }
+
   await printRawLinesByQz(lines);
 }

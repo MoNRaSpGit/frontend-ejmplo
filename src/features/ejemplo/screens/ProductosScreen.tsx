@@ -25,6 +25,10 @@ export function ProductosScreen({ products, clients }: ProductosScreenProps) {
   const [customizingProduct, setCustomizingProduct] = useState<EjemploProduct | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isSubmittingSale, setIsSubmittingSale] = useState(false);
+  // Cuantos tickets salen por venta (igual criterio que joker): 0 = solo
+  // registra, sin imprimir nada; 1 = solo el ticket para el cliente; 3 =
+  // ademas una copia "COMANDA" y otra "ARCHIVO" (ver ejemplo.ticketFormat.ts).
+  const [ticketCopies, setTicketCopies] = useState<0 | 1 | 3>(1);
 
   // Mientras haya algo en el carrito, el modal de personalizar o el de
   // cobro abiertos, hay una venta en curso: AppUpdateNotice no debe
@@ -95,13 +99,14 @@ export function ProductosScreen({ products, clients }: ProductosScreenProps) {
         });
         sales.push(sale);
       }
-      toast.success("Venta registrada.");
-      // Cobrar siempre imprime el ticket -- si el cliente eligio cuenta
-      // corriente el nombre sale del cliente elegido, si no, del campo
-      // "Nombre del cliente" opcional (o nada, si lo dejo en blanco).
+      toast.success(ticketCopies === 0 ? "Venta registrada (sin ticket)." : "Venta registrada.");
+      // Si el cliente eligio cuenta corriente el nombre sale del cliente
+      // elegido, si no, del campo "Nombre del cliente" opcional (o nada,
+      // si lo dejo en blanco). Con 0 copias, printSaleTicket no imprime
+      // nada (ver ejemplo.print.ts).
       const client = clientId ? clients.find((item) => item.id === clientId) : undefined;
       try {
-        await printSaleTicket(sales, client?.name ?? customerName);
+        await printSaleTicket(sales, client?.name ?? customerName, ticketCopies);
       } catch (printError) {
         // La venta ya quedo registrada; solo fallo la impresion.
         toast.error(
@@ -188,11 +193,41 @@ export function ProductosScreen({ products, clients }: ProductosScreenProps) {
             ))}
           </div>
 
+          <div className="ejemplo-ticket-copies">
+            <span className="ejemplo-field-label">Tickets a imprimir</span>
+            <div className="ejemplo-chip-row">
+              <button
+                type="button"
+                className={`ejemplo-chip ejemplo-chip--small ${ticketCopies === 0 ? "is-selected" : ""}`}
+                onClick={() => setTicketCopies(0)}
+                title="Registra la venta pero no imprime nada"
+              >
+                0 tick
+              </button>
+              <button
+                type="button"
+                className={`ejemplo-chip ejemplo-chip--small ${ticketCopies === 1 ? "is-selected" : ""}`}
+                onClick={() => setTicketCopies(1)}
+                title="Solo el ticket para el cliente"
+              >
+                1 tick
+              </button>
+              <button
+                type="button"
+                className={`ejemplo-chip ejemplo-chip--small ${ticketCopies === 3 ? "is-selected" : ""}`}
+                onClick={() => setTicketCopies(3)}
+                title="Cliente + comanda + archivo"
+              >
+                3 tick
+              </button>
+            </div>
+          </div>
+
           <div className="ejemplo-cart__footer">
             <strong>Total: ${cartTotal.toFixed(2)}</strong>
             <div className="ejemplo-cart__actions">
               <button type="button" className="ejemplo-button" onClick={() => openPayment()}>
-                Cobrar
+                {ticketCopies === 0 ? "Cobrar (sin ticket)" : "Cobrar"}
               </button>
             </div>
           </div>

@@ -888,6 +888,21 @@ h3 {
   white-space: nowrap;
 }
 
+.ejemplo-ticket-copies {
+  display: grid;
+  gap: 6px;
+}
+
+.ejemplo-chip-row {
+  display: flex;
+  gap: 8px;
+}
+
+.ejemplo-chip--small {
+  padding: 7px 14px;
+  font-size: 13px;
+}
+
 @media (max-width: 420px) {
   .ejemplo-payment-chips .ejemplo-chip {
     padding: 9px 4px;

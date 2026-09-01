@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { clearPreferredPrinterName, listQzPrinters, setPreferredPrinterName } from "../services/ejemplo.print";
+import {
+  clearPreferredPrinterName,
+  getPrintMethod,
+  listQzPrinters,
+  setPreferredPrinterName,
+  setPrintMethod,
+  type PrintMethod
+} from "../services/ejemplo.print";
+import { getCachedUsbPrinterName, isWebUsbSupported, pickUsbPrinter } from "../services/ejemplo.webusbPrint";
 
 type PrinterSettingsModalProps = {
   currentPrinterName: string | null;
@@ -7,12 +15,20 @@ type PrinterSettingsModalProps = {
   onPrinterChange: (name: string | null) => void;
 };
 
+// Dos formas de imprimir, elegidas a mano (no se detectan solas): "PC de
+// escritorio" via QZ Tray, o "Tablet / Android" directo por USB sin QZ de
+// por medio. El operario elige una vez y queda guardada -- ver
+// getPrintMethod/setPrintMethod en ejemplo.print.ts.
 export function PrinterSettingsModal({ currentPrinterName, onClose, onPrinterChange }: PrinterSettingsModalProps) {
+  const [method, setMethod] = useState<PrintMethod>(getPrintMethod());
   const [printers, setPrinters] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [usbDeviceName, setUsbDeviceName] = useState<string | null>(() => getCachedUsbPrinterName());
+  const [isPickingUsb, setIsPickingUsb] = useState(false);
 
   useEffect(() => {
+    if (method !== "qz") return;
     let active = true;
 
     async function loadPrinters() {
@@ -38,7 +54,13 @@ export function PrinterSettingsModal({ currentPrinterName, onClose, onPrinterCha
     return () => {
       active = false;
     };
-  }, []);
+  }, [method]);
+
+  function handleChangeMethod(nextMethod: PrintMethod) {
+    setMethod(nextMethod);
+    setPrintMethod(nextMethod);
+    setError("");
+  }
 
   function handleSelect(name: string) {
     setPreferredPrinterName(name);
@@ -51,46 +73,110 @@ export function PrinterSettingsModal({ currentPrinterName, onClose, onPrinterCha
     onPrinterChange(null);
   }
 
+  async function handlePickUsbPrinter() {
+    setIsPickingUsb(true);
+    setError("");
+    try {
+      const name = await pickUsbPrinter();
+      setUsbDeviceName(name);
+    } catch (pickError) {
+      setError(pickError instanceof Error ? pickError.message : "No se pudo conectar la impresora USB.");
+    } finally {
+      setIsPickingUsb(false);
+    }
+  }
+
   return (
     <div className="ejemplo-modal" role="presentation" onClick={onClose}>
       <div className="ejemplo-modal__backdrop" />
       <article className="ejemplo-modal__dialog" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
         <h2>Impresora</h2>
-        <p className="ejemplo-hint">
-          {currentPrinterName ? (
-            <>
-              Usando ahora: <strong>{currentPrinterName}</strong>
-            </>
-          ) : (
-            "Todavia no elegiste ninguna impresora."
-          )}
-        </p>
 
-        {isLoading ? <p className="ejemplo-empty">Buscando impresoras (QZ Tray)...</p> : null}
-        {error ? <p className="ejemplo-empty">{error}</p> : null}
+        <div className="ejemplo-payment-chips">
+          <button
+            type="button"
+            className={`ejemplo-chip ${method === "qz" ? "is-selected" : ""}`}
+            onClick={() => handleChangeMethod("qz")}
+          >
+            PC de escritorio
+          </button>
+          <button
+            type="button"
+            className={`ejemplo-chip ${method === "webusb" ? "is-selected" : ""}`}
+            onClick={() => handleChangeMethod("webusb")}
+          >
+            Tablet / Android
+          </button>
+        </div>
 
-        {!isLoading && !error ? (
-          printers.length ? (
-            <ul className="ejemplo-printer-list">
-              {printers.map((printer) => (
-                <li key={printer}>
-                  <button
-                    type="button"
-                    className={`ejemplo-printer-option ${printer === currentPrinterName ? "is-active" : ""}`}
-                    onClick={() => handleSelect(printer)}
-                  >
-                    {printer}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="ejemplo-empty">QZ Tray no detecto ninguna impresora instalada.</p>
-          )
-        ) : null}
+        {method === "qz" ? (
+          <>
+            <p className="ejemplo-hint">
+              {currentPrinterName ? (
+                <>
+                  Usando ahora: <strong>{currentPrinterName}</strong>
+                </>
+              ) : (
+                "Todavia no elegiste ninguna impresora."
+              )}
+            </p>
+
+            {isLoading ? <p className="ejemplo-empty">Buscando impresoras (QZ Tray)...</p> : null}
+            {error ? <p className="ejemplo-empty">{error}</p> : null}
+
+            {!isLoading && !error ? (
+              printers.length ? (
+                <ul className="ejemplo-printer-list">
+                  {printers.map((printer) => (
+                    <li key={printer}>
+                      <button
+                        type="button"
+                        className={`ejemplo-printer-option ${printer === currentPrinterName ? "is-active" : ""}`}
+                        onClick={() => handleSelect(printer)}
+                      >
+                        {printer}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="ejemplo-empty">QZ Tray no detecto ninguna impresora instalada.</p>
+              )
+            ) : null}
+          </>
+        ) : (
+          <>
+            <p className="ejemplo-hint">
+              {usbDeviceName ? (
+                <>
+                  Usando ahora: <strong>{usbDeviceName}</strong>
+                </>
+              ) : (
+                "Todavia no elegiste ninguna impresora USB."
+              )}
+            </p>
+
+            {!isWebUsbSupported() ? (
+              <p className="ejemplo-empty">Este navegador no soporta USB directo (probalo con Chrome en Android).</p>
+            ) : (
+              <>
+                <p className="ejemplo-hint">Conecta la impresora termica por USB a la tablet antes de elegirla.</p>
+                {error ? <p className="ejemplo-empty">{error}</p> : null}
+                <button
+                  type="button"
+                  className="ejemplo-button ejemplo-button--ghost"
+                  onClick={() => void handlePickUsbPrinter()}
+                  disabled={isPickingUsb}
+                >
+                  {isPickingUsb ? "Buscando..." : usbDeviceName ? "Cambiar impresora USB" : "Elegir impresora USB"}
+                </button>
+              </>
+            )}
+          </>
+        )}
 
         <div className="ejemplo-modal__footer">
-          {currentPrinterName ? (
+          {method === "qz" && currentPrinterName ? (
             <button type="button" className="ejemplo-button ejemplo-button--ghost" onClick={handleForget}>
               Olvidar impresora
             </button>

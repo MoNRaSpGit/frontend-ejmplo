@@ -7,7 +7,8 @@ import { PanelScreen } from "./screens/PanelScreen";
 import { ProductosScreen } from "./screens/ProductosScreen";
 import { StockScreen } from "./screens/StockScreen";
 import { PrinterSettingsModal } from "./components/PrinterSettingsModal";
-import { getPreferredPrinterName } from "./services/ejemplo.print";
+import { getPreferredPrinterName, getPrintMethod } from "./services/ejemplo.print";
+import { getCachedUsbPrinterName, primeUsbPrinterConnection } from "./services/ejemplo.webusbPrint";
 import { EjemploClient, EjemploProduct } from "./ejemplo.types";
 
 type ViewMode = "productos" | "stock" | "clientes" | "panel";
@@ -48,8 +49,25 @@ export function EjemploHomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isPrinterModalOpen, setIsPrinterModalOpen] = useState(false);
   const [printerName, setPrinterName] = useState<string | null>(() => getPreferredPrinterName());
+  // No hay estado de React para el metodo elegido (qz/webusb) ni para el
+  // nombre del dispositivo USB -- viven en modulos aparte (ejemplo.print.ts
+  // / ejemplo.webusbPrint.ts). Este contador solo fuerza un re-render al
+  // cerrar el modal, para que la etiqueta del boton "Impresora" (mas abajo)
+  // recalcule esos valores en vez de quedar con lo que tenia al abrir.
+  const [printerSettingsVersion, setPrinterSettingsVersion] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
+
+  // Detecta en silencio (sin pedir permiso) si ya hay una impresora USB
+  // autorizada de una sesion anterior en este navegador -- solo aplica si
+  // el metodo elegido es "webusb" (tablet/Android).
+  useEffect(() => {
+    void primeUsbPrinterConnection();
+  }, []);
+
+  void printerSettingsVersion;
+  const printerButtonLabel =
+    getPrintMethod() === "webusb" ? getCachedUsbPrinterName() || "Elegir impresora" : printerName || "Elegir impresora";
 
   useEffect(() => {
     let active = true;
@@ -159,7 +177,7 @@ export function EjemploHomePage() {
                   }}
                 >
                   <Printer size={16} strokeWidth={2} />
-                  {printerName || "Elegir impresora"}
+                  {printerButtonLabel}
                 </button>
               </div>
             ) : null}
@@ -206,7 +224,10 @@ export function EjemploHomePage() {
       {isPrinterModalOpen ? (
         <PrinterSettingsModal
           currentPrinterName={printerName}
-          onClose={() => setIsPrinterModalOpen(false)}
+          onClose={() => {
+            setIsPrinterModalOpen(false);
+            setPrinterSettingsVersion((current) => current + 1);
+          }}
           onPrinterChange={setPrinterName}
         />
       ) : null}
