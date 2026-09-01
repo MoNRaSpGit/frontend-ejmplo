@@ -1,4 +1,4 @@
-import { Boxes, LayoutDashboard, Menu, Printer, ShoppingBag, UserRound, Users } from "lucide-react";
+import { Boxes, LayoutDashboard, Menu, Printer, ShoppingBag, Store, UserRound, Users } from "lucide-react";
 import { useEffect, useRef, useState, type ComponentType } from "react";
 import { toast } from "react-toastify";
 import { listClients, listProducts, listRubros } from "./ejemplo.client";
@@ -27,6 +27,13 @@ const VIEW_ICONS: Record<ViewMode, ComponentType<{ size?: number; strokeWidth?: 
 };
 
 const VIEW_ORDER: ViewMode[] = ["productos", "stock", "clientes", "panel"];
+
+// Placeholder de marca (mismo criterio que el ticket, ver STORE_NAME en
+// ejemplo.ticketFormat.ts): en vez de mostrar el rubro elegido ("Cafeteria",
+// "Pesca") como si fuera el nombre del negocio, se deja un lugar generico
+// para el logo real del cliente -- el rubro sigue funcionando igual por
+// atras (sigue filtrando productos), solo que ya no se muestra como marca.
+const BRAND_PLACEHOLDER = "TU LOGO";
 
 function capitalize(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
@@ -111,10 +118,10 @@ export function EjemploHomePage() {
         <div className="ejemplo-topbar__inner">
           <div className="ejemplo-brand">
             <span className="ejemplo-brand__mark" aria-hidden="true">
-              {rubro ? capitalize(rubro).charAt(0) : "D"}
+              <Store size={20} strokeWidth={2} />
             </span>
             <div>
-              <strong>{rubro ? capitalize(rubro) : "Sistema de venta"}</strong>
+              <strong>{BRAND_PLACEHOLDER}</strong>
             </div>
           </div>
 
@@ -171,7 +178,7 @@ export function EjemploHomePage() {
 
       <nav className="ejemplo-sidebar" aria-label="Secciones">
         <span className="ejemplo-sidebar__mark" aria-hidden="true">
-          {rubro ? capitalize(rubro).charAt(0) : "D"}
+          <Store size={20} strokeWidth={2} />
         </span>
         <div className="ejemplo-sidebar__divider" />
         <ul className="ejemplo-sidebar__list">
