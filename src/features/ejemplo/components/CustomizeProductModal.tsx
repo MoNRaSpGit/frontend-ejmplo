@@ -33,16 +33,12 @@ export function CustomizeProductModal({ product, onConfirm, onClose }: Customize
         <h2>{product.name}</h2>
         <p className="ejemplo-hint">Elegi como lo queres (opcional).</p>
 
-        <div className="ejemplo-chip-group">
+        <div className="ejemplo-checkbox-list">
           {options.map((option) => (
-            <button
-              key={option}
-              type="button"
-              className={`ejemplo-chip ${selected.includes(option) ? "is-selected" : ""}`}
-              onClick={() => toggleOption(option)}
-            >
-              {option}
-            </button>
+            <label key={option} className="ejemplo-checkbox-option">
+              <input type="checkbox" checked={selected.includes(option)} onChange={() => toggleOption(option)} />
+              <span>{option}</span>
+            </label>
           ))}
         </div>
 

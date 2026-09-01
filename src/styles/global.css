@@ -858,15 +858,10 @@ h3 {
   font-weight: 800;
 }
 
-.ejemplo-payment-chips,
-.ejemplo-chip-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 .ejemplo-payment-chips {
+  display: flex;
   flex-wrap: nowrap;
+  gap: 8px;
 }
 
 .ejemplo-chip {
@@ -904,6 +899,35 @@ h3 {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.ejemplo-checkbox-list {
+  display: grid;
+  gap: 4px;
+}
+
+.ejemplo-checkbox-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--ej-radius-sm);
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  transition: background 0.12s ease;
+}
+
+.ejemplo-checkbox-option:hover {
+  background: var(--ej-surface-muted);
+}
+
+.ejemplo-checkbox-option input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--ej-accent);
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
 /* ---------- Panel de control (estilo joker) ---------- */
