@@ -858,23 +858,26 @@ h3 {
   font-weight: 800;
 }
 
-.ejemplo-payment-chips {
+.ejemplo-payment-chips,
+.ejemplo-chip-group {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
+.ejemplo-payment-chips {
+  flex-wrap: nowrap;
+}
+
 .ejemplo-chip {
-  flex: 1 1 0;
-  padding: 10px 6px;
+  padding: 10px 16px;
   border-radius: 999px;
   border: 1px solid var(--ej-border);
   background: var(--ej-surface);
   cursor: pointer;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 14px;
   text-align: center;
-  white-space: nowrap;
 }
 
 .ejemplo-chip.is-selected {
@@ -883,8 +886,15 @@ h3 {
   color: #fffaf2;
 }
 
+.ejemplo-payment-chips .ejemplo-chip {
+  flex: 1 1 0;
+  padding: 10px 6px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
 @media (max-width: 420px) {
-  .ejemplo-chip {
+  .ejemplo-payment-chips .ejemplo-chip {
     padding: 9px 4px;
     font-size: 11px;
   }

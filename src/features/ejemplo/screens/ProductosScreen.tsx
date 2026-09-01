@@ -1,6 +1,7 @@
 import { ImagePlus, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
+import { CustomizeProductModal } from "../components/CustomizeProductModal";
 import { PaymentMethodModal } from "../components/PaymentMethodModal";
 import { createSale } from "../ejemplo.client";
 import { printSaleTicket } from "../services/ejemplo.print";
@@ -12,21 +13,27 @@ type ProductosScreenProps = {
   clients: EjemploClient[];
 };
 
-type CartLine = { product: EjemploProduct; quantity: number };
+type CartLine = { key: string; product: EjemploProduct; detail: string; quantity: number };
+
+function buildLineKey(productId: string, detail: string) {
+  return `${productId}::${detail}`;
+}
 
 export function ProductosScreen({ products, clients }: ProductosScreenProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
+  const [customizingProduct, setCustomizingProduct] = useState<EjemploProduct | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isSubmittingSale, setIsSubmittingSale] = useState(false);
 
-  // Mientras haya algo en el carrito o el modal de cobro abierto, hay una
-  // venta en curso: AppUpdateNotice no debe recargar la pagina sola en
-  // ese momento (se perderia la venta a medio hacer).
+  // Mientras haya algo en el carrito, el modal de personalizar o el de
+  // cobro abiertos, hay una venta en curso: AppUpdateNotice no debe
+  // recargar la pagina sola en ese momento (se perderia la venta a medio
+  // hacer).
   useEffect(() => {
-    setAppBusy("productos-venta", cart.length > 0 || showPaymentModal);
+    setAppBusy("productos-venta", cart.length > 0 || !!customizingProduct || showPaymentModal);
     return () => setAppBusy("productos-venta", false);
-  }, [cart.length, showPaymentModal]);
+  }, [cart.length, customizingProduct, showPaymentModal]);
 
   const term = searchTerm.trim().toLowerCase();
 
@@ -42,30 +49,29 @@ export function ProductosScreen({ products, clients }: ProductosScreenProps) {
     [cart]
   );
 
-  function addToCart(product: EjemploProduct) {
+  // Dos lineas del mismo producto pero con personalizacion distinta (ej:
+  // "Capuccino grande" con canela y otro sin nada) tienen que quedar
+  // separadas -- por eso la clave del carrito es producto + detail, no
+  // solo el id del producto.
+  function addToCart(product: EjemploProduct, detail: string) {
+    const key = buildLineKey(product.id, detail);
     setCart((current) => {
-      const existing = current.find((line) => line.product.id === product.id);
+      const existing = current.find((line) => line.key === key);
       if (existing) {
-        return current.map((line) =>
-          line.product.id === product.id ? { ...line, quantity: line.quantity + 1 } : line
-        );
+        return current.map((line) => (line.key === key ? { ...line, quantity: line.quantity + 1 } : line));
       }
-      return [...current, { product, quantity: 1 }];
+      return [...current, { key, product, detail, quantity: 1 }];
     });
   }
 
-  function changeQuantity(productId: string, delta: number) {
+  function changeQuantity(key: string, delta: number) {
     setCart((current) =>
-      current
-        .map((line) =>
-          line.product.id === productId ? { ...line, quantity: line.quantity + delta } : line
-        )
-        .filter((line) => line.quantity > 0)
+      current.map((line) => (line.key === key ? { ...line, quantity: line.quantity + delta } : line)).filter((line) => line.quantity > 0)
     );
   }
 
-  function removeFromCart(productId: string) {
-    setCart((current) => current.filter((line) => line.product.id !== productId));
+  function removeFromCart(key: string) {
+    setCart((current) => current.filter((line) => line.key !== key));
   }
 
   function openPayment() {
@@ -84,7 +90,8 @@ export function ProductosScreen({ products, clients }: ProductosScreenProps) {
           productId: line.product.id,
           quantity: line.quantity,
           paymentMethod,
-          clientId
+          clientId,
+          detail: line.detail || undefined
         });
         sales.push(sale);
       }
@@ -124,7 +131,7 @@ export function ProductosScreen({ products, clients }: ProductosScreenProps) {
       {term ? (
         <div className="ejemplo-product-grid">
           {filteredProducts.map((product) => (
-            <article key={product.id} className="ejemplo-product-card" onClick={() => addToCart(product)}>
+            <article key={product.id} className="ejemplo-product-card" onClick={() => setCustomizingProduct(product)}>
               {product.imageUrl ? (
                 <img className="ejemplo-product-card__image" src={product.imageUrl} alt="" />
               ) : (
@@ -153,17 +160,18 @@ export function ProductosScreen({ products, clients }: ProductosScreenProps) {
           <h2>Venta actual</h2>
           <div className="ejemplo-client-list">
             {cart.map((line) => (
-              <div key={line.product.id} className="ejemplo-cart__line">
+              <div key={line.key} className="ejemplo-cart__line">
                 <div>
                   <strong>{line.product.name}</strong>
                   <span> · ${line.product.price.toFixed(2)} c/u</span>
+                  {line.detail ? <p className="ejemplo-hint">{line.detail}</p> : null}
                 </div>
                 <div className="ejemplo-quantity-stepper">
-                  <button type="button" onClick={() => changeQuantity(line.product.id, -1)}>
+                  <button type="button" onClick={() => changeQuantity(line.key, -1)}>
                     -
                   </button>
                   <span>{line.quantity}</span>
-                  <button type="button" onClick={() => changeQuantity(line.product.id, 1)}>
+                  <button type="button" onClick={() => changeQuantity(line.key, 1)}>
                     +
                   </button>
                 </div>
@@ -171,7 +179,7 @@ export function ProductosScreen({ products, clients }: ProductosScreenProps) {
                 <button
                   type="button"
                   className="ejemplo-button--icon"
-                  onClick={() => removeFromCart(line.product.id)}
+                  onClick={() => removeFromCart(line.key)}
                   aria-label={`Quitar ${line.product.name}`}
                 >
                   <X size={16} strokeWidth={2} />
@@ -189,6 +197,17 @@ export function ProductosScreen({ products, clients }: ProductosScreenProps) {
             </div>
           </div>
         </article>
+      ) : null}
+
+      {customizingProduct ? (
+        <CustomizeProductModal
+          product={customizingProduct}
+          onClose={() => setCustomizingProduct(null)}
+          onConfirm={(detail) => {
+            addToCart(customizingProduct, detail);
+            setCustomizingProduct(null);
+          }}
+        />
       ) : null}
 
       {showPaymentModal && cart.length ? (

@@ -33,7 +33,7 @@ const VIEW_ORDER: ViewMode[] = ["productos", "stock", "clientes", "panel"];
 // "Pesca") como si fuera el nombre del negocio, se deja un lugar generico
 // para el logo real del cliente -- el rubro sigue funcionando igual por
 // atras (sigue filtrando productos), solo que ya no se muestra como marca.
-const BRAND_PLACEHOLDER = "TU LOGO";
+const BRAND_PLACEHOLDER = "SU LOGO";
 
 function capitalize(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);

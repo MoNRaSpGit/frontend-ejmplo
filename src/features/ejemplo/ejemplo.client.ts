@@ -100,6 +100,7 @@ export async function createSale(payload: {
   quantity?: number;
   paymentMethod: string;
   clientId?: string;
+  detail?: string;
 }) {
   const response = await fetch(buildUrl("/ejemplo/sales"), {
     method: "POST",

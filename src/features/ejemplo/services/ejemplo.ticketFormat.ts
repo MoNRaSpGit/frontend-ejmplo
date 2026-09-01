@@ -17,7 +17,7 @@ import { EjemploSale, PAYMENT_METHOD_LABELS } from "../ejemplo.types";
 
 // Placeholder de marca: es una demo para mostrarle a clientes, no un
 // negocio puntual (ver ejemplo-ticket viejo en HTML que esto reemplaza).
-const STORE_NAME = "TU LOGO";
+const STORE_NAME = "SU LOGO";
 const INTERNAL_USE_NOTE = "Uso interno";
 const FOOTER_MESSAGE = "Gracias por tu compra!";
 
@@ -54,6 +54,9 @@ export function buildSaleTicketLines(sales: EjemploSale[], clientName?: string) 
     lines.push(BOLD_ON);
     lines.push(`${rightAlignedLine(`${sale.quantity}x ${sale.productName} `, formatMoney(sale.total))}\n`);
     lines.push(BOLD_OFF);
+    if (sale.detail?.trim()) {
+      lines.push(`  ${sale.detail.trim()}\n`);
+    }
     if (index < sales.length - 1) {
       lines.push(`${divider()}\n`);
     }
