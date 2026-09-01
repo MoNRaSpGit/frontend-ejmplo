@@ -145,7 +145,7 @@ export function ProductosScreen({ products, clients }: ProductosScreenProps) {
           {!filteredProducts.length ? <p className="ejemplo-empty">Sin resultados para "{searchTerm}".</p> : null}
         </div>
       ) : (
-        <p className="ejemplo-empty">Escribi el nombre de un producto para buscarlo y sumarlo a la venta.</p>
+        <p className="ejemplo-empty">Escribi el nombre de un producto para buscarlo y agregarlo a la venta.</p>
       )}
 
       {cart.length ? (
