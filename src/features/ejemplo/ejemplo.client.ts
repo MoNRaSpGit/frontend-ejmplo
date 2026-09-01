@@ -34,7 +34,14 @@ export async function listProducts(rubro: string) {
   return data.items;
 }
 
-export async function createProduct(payload: { rubro: string; category: string; name: string; price: number; description?: string }) {
+export async function createProduct(payload: {
+  rubro: string;
+  category: string;
+  name: string;
+  price: number;
+  description?: string;
+  imageUrl?: string;
+}) {
   const response = await fetch(buildUrl("/ejemplo/products"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },

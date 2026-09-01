@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { LayoutDashboard, Printer, ShoppingBag, Users } from "lucide-react";
+import { useEffect, useState, type ComponentType } from "react";
 import { toast } from "react-toastify";
 import { listClients, listProducts, listRubros } from "./ejemplo.client";
 import { ClientesScreen } from "./screens/ClientesScreen";
@@ -15,6 +16,14 @@ const VIEW_LABELS: Record<ViewMode, string> = {
   clientes: "Clientes",
   panel: "Panel de control"
 };
+
+const VIEW_ICONS: Record<ViewMode, ComponentType<{ size?: number; strokeWidth?: number }>> = {
+  productos: ShoppingBag,
+  clientes: Users,
+  panel: LayoutDashboard
+};
+
+const VIEW_ORDER: ViewMode[] = ["productos", "clientes", "panel"];
 
 function capitalize(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
@@ -79,15 +88,20 @@ export function EjemploHomePage() {
   }
 
   return (
-    <main className="ejemplo-app">
-      <header className="ejemplo-header">
-        <div className="ejemplo-header__inner">
-          <div className="ejemplo-header__brand">
-            <strong>{rubro ? capitalize(rubro) : "Sistema de venta"} — Demo</strong>
-            <p>Ejemplo de sistema de venta, personalizable segun el rubro del cliente.</p>
+    <div className="ejemplo-app ejemplo-app--with-sidebar">
+      <header className="ejemplo-topbar">
+        <div className="ejemplo-topbar__inner">
+          <div className="ejemplo-brand">
+            <span className="ejemplo-brand__mark" aria-hidden="true">
+              {rubro ? capitalize(rubro).charAt(0) : "D"}
+            </span>
+            <div>
+              <strong>{rubro ? capitalize(rubro) : "Sistema de venta"}</strong>
+              <p>Demo personalizable segun el rubro del cliente</p>
+            </div>
           </div>
 
-          <div className="ejemplo-header__controls">
+          <div className="ejemplo-topbar__controls">
             <label className="ejemplo-rubro-picker">
               <span>Rubro</span>
               <select value={rubro} onChange={(event) => setRubro(event.target.value)}>
@@ -101,35 +115,50 @@ export function EjemploHomePage() {
 
             <button
               type="button"
-              className="ejemplo-button ejemplo-button--ghost"
+              className="ejemplo-button ejemplo-button--ghost ejemplo-button--icon-text"
               onClick={() => setIsPrinterModalOpen(true)}
             >
-              🖨️ {printerName || "Elegir impresora"}
+              <Printer size={16} strokeWidth={2} />
+              {printerName || "Elegir impresora"}
             </button>
           </div>
         </div>
-
-        <nav className="ejemplo-nav">
-          {(Object.keys(VIEW_LABELS) as ViewMode[]).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              className={`ejemplo-nav__item ${viewMode === mode ? "is-active" : ""}`}
-              onClick={() => setViewMode(mode)}
-            >
-              {VIEW_LABELS[mode]}
-            </button>
-          ))}
-        </nav>
       </header>
 
-      <div className="ejemplo-shell">
+      <main className="ejemplo-shell">
         {viewMode === "productos" ? (
           <ProductosScreen rubro={rubro} products={products} clients={clients} onProductsChange={setProducts} />
         ) : null}
         {viewMode === "clientes" ? <ClientesScreen clients={clients} onClientsChange={setClients} /> : null}
         {viewMode === "panel" ? <PanelScreen rubro={rubro} /> : null}
-      </div>
+      </main>
+
+      <nav className="ejemplo-sidebar" aria-label="Secciones">
+        <span className="ejemplo-sidebar__mark" aria-hidden="true">
+          {rubro ? capitalize(rubro).charAt(0) : "D"}
+        </span>
+        <div className="ejemplo-sidebar__divider" />
+        <ul className="ejemplo-sidebar__list">
+          {VIEW_ORDER.map((mode) => {
+            const Icon = VIEW_ICONS[mode];
+            const isActive = viewMode === mode;
+            return (
+              <li key={mode}>
+                <button
+                  type="button"
+                  className={`ejemplo-sidebar__item${isActive ? " is-active" : ""}`}
+                  onClick={() => setViewMode(mode)}
+                  aria-current={isActive ? "page" : undefined}
+                  title={VIEW_LABELS[mode]}
+                >
+                  <Icon size={20} strokeWidth={2} />
+                  <span className="ejemplo-sidebar__label">{VIEW_LABELS[mode]}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
 
       {isPrinterModalOpen ? (
         <PrinterSettingsModal
@@ -138,6 +167,6 @@ export function EjemploHomePage() {
           onPrinterChange={setPrinterName}
         />
       ) : null}
-    </main>
+    </div>
   );
 }

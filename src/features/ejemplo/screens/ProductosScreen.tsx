@@ -1,7 +1,9 @@
+import { ImagePlus, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { PaymentMethodModal } from "../components/PaymentMethodModal";
 import { createProduct, createSale, deleteProduct } from "../ejemplo.client";
+import { fileToCompressedDataUrl } from "../services/ejemplo.image";
 import { printSaleTicket } from "../services/ejemplo.print";
 import { EjemploClient, EjemploPaymentMethod, EjemploProduct, EjemploSale } from "../ejemplo.types";
 
@@ -15,7 +17,7 @@ type ProductosScreenProps = {
 type CartLine = { product: EjemploProduct; quantity: number };
 
 function emptyForm(rubro: string) {
-  return { rubro, category: "", name: "", price: "", description: "" };
+  return { rubro, category: "", name: "", price: "", description: "", imageUrl: "" };
 }
 
 export function ProductosScreen({ rubro, products, clients, onProductsChange }: ProductosScreenProps) {
@@ -28,6 +30,7 @@ export function ProductosScreen({ rubro, products, clients, onProductsChange }: 
   const [showNewProductForm, setShowNewProductForm] = useState(false);
   const [newProductForm, setNewProductForm] = useState(emptyForm(rubro));
   const [isSavingProduct, setIsSavingProduct] = useState(false);
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
 
   const term = searchTerm.trim().toLowerCase();
 
@@ -124,7 +127,8 @@ export function ProductosScreen({ rubro, products, clients, onProductsChange }: 
         category: newProductForm.category.trim(),
         name: newProductForm.name.trim(),
         price: Number(newProductForm.price),
-        description: newProductForm.description.trim()
+        description: newProductForm.description.trim(),
+        imageUrl: newProductForm.imageUrl || undefined
       });
       onProductsChange([...products, item]);
       setNewProductForm(emptyForm(rubro));
@@ -134,6 +138,20 @@ export function ProductosScreen({ rubro, products, clients, onProductsChange }: 
       toast.error(error instanceof Error ? error.message : "No se pudo agregar el producto.");
     } finally {
       setIsSavingProduct(false);
+    }
+  }
+
+  async function handleImageFileChange(file: File | undefined) {
+    if (!file) return;
+
+    setIsProcessingImage(true);
+    try {
+      const dataUrl = await fileToCompressedDataUrl(file);
+      setNewProductForm((current) => ({ ...current, imageUrl: dataUrl }));
+    } catch {
+      toast.error("No se pudo procesar la imagen.");
+    } finally {
+      setIsProcessingImage(false);
     }
   }
 
@@ -203,6 +221,40 @@ export function ProductosScreen({ rubro, products, clients, onProductsChange }: 
               />
             </label>
           </div>
+
+          <div className="ejemplo-image-picker">
+            <span className="ejemplo-field-label">Foto del producto (opcional)</span>
+            <div className="ejemplo-image-picker__preview">
+              {newProductForm.imageUrl ? (
+                <img src={newProductForm.imageUrl} alt="" />
+              ) : (
+                <ImagePlus size={26} strokeWidth={1.5} />
+              )}
+            </div>
+            <div className="ejemplo-image-picker__actions">
+              <label className="ejemplo-button ejemplo-button--ghost ejemplo-button--icon-text">
+                <ImagePlus size={16} strokeWidth={2} />
+                {isProcessingImage ? "Procesando..." : newProductForm.imageUrl ? "Cambiar foto" : "Elegir foto"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  disabled={isProcessingImage}
+                  onChange={(event) => void handleImageFileChange(event.target.files?.[0])}
+                />
+              </label>
+              {newProductForm.imageUrl ? (
+                <button
+                  type="button"
+                  className="ejemplo-button--icon"
+                  onClick={() => setNewProductForm((current) => ({ ...current, imageUrl: "" }))}
+                >
+                  <X size={16} strokeWidth={2} />
+                </button>
+              ) : null}
+            </div>
+          </div>
+
           <button type="button" className="ejemplo-button" onClick={handleCreateProduct} disabled={isSavingProduct}>
             {isSavingProduct ? "Guardando..." : "Guardar producto"}
           </button>
@@ -213,22 +265,31 @@ export function ProductosScreen({ rubro, products, clients, onProductsChange }: 
         <div className="ejemplo-product-grid">
           {filteredProducts.map((product) => (
             <article key={product.id} className="ejemplo-product-card" onClick={() => addToCart(product)}>
-              <span className="ejemplo-product-card__category">{product.category}</span>
-              <strong>{product.name}</strong>
-              {product.description ? <p>{product.description}</p> : null}
-              <div className="ejemplo-product-card__footer">
-                <strong>${product.price.toFixed(2)}</strong>
-                <button
-                  type="button"
-                  className="ejemplo-button--icon"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    handleDeleteProduct(product.id);
-                  }}
-                  aria-label={`Eliminar ${product.name}`}
-                >
-                  x
-                </button>
+              {product.imageUrl ? (
+                <img className="ejemplo-product-card__image" src={product.imageUrl} alt="" />
+              ) : (
+                <div className="ejemplo-product-card__image-placeholder">
+                  <ImagePlus size={28} strokeWidth={1.5} />
+                </div>
+              )}
+              <div className="ejemplo-product-card__body">
+                <span className="ejemplo-product-card__category">{product.category}</span>
+                <strong>{product.name}</strong>
+                {product.description ? <p>{product.description}</p> : null}
+                <div className="ejemplo-product-card__footer">
+                  <strong>${product.price.toFixed(2)}</strong>
+                  <button
+                    type="button"
+                    className="ejemplo-button--icon"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleDeleteProduct(product.id);
+                    }}
+                    aria-label={`Eliminar ${product.name}`}
+                  >
+                    <X size={16} strokeWidth={2} />
+                  </button>
+                </div>
               </div>
             </article>
           ))}
@@ -264,7 +325,7 @@ export function ProductosScreen({ rubro, products, clients, onProductsChange }: 
                   onClick={() => removeFromCart(line.product.id)}
                   aria-label={`Quitar ${line.product.name}`}
                 >
-                  x
+                  <X size={16} strokeWidth={2} />
                 </button>
               </div>
             ))}
