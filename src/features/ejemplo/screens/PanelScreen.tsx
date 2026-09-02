@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { getPanelSummary, listSales } from "../ejemplo.client";
+import { printPanelSummaryTicket } from "../services/ejemplo.print";
 import { EjemploPanelSummary, EjemploPaymentMethod, EjemploSale, PAYMENT_METHOD_LABELS } from "../ejemplo.types";
 
 // Se saca "transferencia" de este listado (no del tipo/backend, por si
@@ -38,6 +39,24 @@ export function PanelScreen({ rubro }: PanelScreenProps) {
   const [sales, setSales] = useState<EjemploSale[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAllMovements, setShowAllMovements] = useState(false);
+  const [isPrintingClose, setIsPrintingClose] = useState(false);
+
+  // "Cerrar caja": por ahora solo imprime el resumen del dia (tipo de
+  // pagos, total, top productos, movimientos) -- no borra ni resetea
+  // nada en el backend todavia, a proposito (el cliente lo pidio asi,
+  // "simple" por ahora, para no perder datos mientras se prueba).
+  async function handleCloseRegister() {
+    if (!summary) return;
+    setIsPrintingClose(true);
+    try {
+      await printPanelSummaryTicket(summary, sales);
+      toast.success("Cierre de caja impreso.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo imprimir el cierre.");
+    } finally {
+      setIsPrintingClose(false);
+    }
+  }
 
   useEffect(() => {
     let active = true;
@@ -75,9 +94,14 @@ export function PanelScreen({ rubro }: PanelScreenProps) {
   return (
     <section className="ejemplo-screen">
       <article className="ejemplo-panel">
-        <div className="ejemplo-panel__heading">
-          <p className="ejemplo-eyebrow">Hoy</p>
-          <h2>Resumen del dia</h2>
+        <div className="ejemplo-panel__heading ejemplo-panel__heading--row">
+          <div>
+            <p className="ejemplo-eyebrow">Hoy</p>
+            <h2>Resumen del dia</h2>
+          </div>
+          <button type="button" className="ejemplo-button" disabled={isPrintingClose} onClick={() => void handleCloseRegister()}>
+            {isPrintingClose ? "Imprimiendo..." : "Cerrar caja"}
+          </button>
         </div>
 
         <div className="ejemplo-stat-grid">

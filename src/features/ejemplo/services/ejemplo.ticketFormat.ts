@@ -13,7 +13,7 @@ import {
   formatMoney,
   rightAlignedLine
 } from "./ejemplo.escpos";
-import { EjemploSale, PAYMENT_METHOD_LABELS } from "../ejemplo.types";
+import { EjemploPanelSummary, EjemploPaymentMethod, EjemploSale, PAYMENT_METHOD_LABELS } from "../ejemplo.types";
 import { MockClient, getMockClientTotal } from "../ejemplo.mockClients";
 
 // Placeholder de marca: es una demo para mostrarle a clientes, no un
@@ -87,6 +87,89 @@ export function buildAccountSettlementTicketLines(client: MockClient) {
   lines.push(BOLD_ON, TALL_SIZE_ON);
   lines.push(`${rightAlignedLine("Total pagado ", formatMoney(total))}\n`);
   lines.push(DOUBLE_SIZE_OFF, BOLD_OFF);
+  lines.push("\n");
+
+  lines.push(ALIGN_CENTER);
+  lines.push(BOLD_ON, TALL_SIZE_ON);
+  lines.push(`${FOOTER_MESSAGE}\n`);
+  lines.push(DOUBLE_SIZE_OFF, BOLD_OFF);
+
+  lines.push("\n\n\n");
+  lines.push(ALIGN_LEFT);
+  lines.push(CUT_PAPER);
+
+  return lines;
+}
+
+// Ticket de "Cerrar caja" del Panel de control: resumen del dia (tipo de
+// pagos, total vendido, top productos) + el detalle de cada movimiento.
+// Por ahora es solo para imprimir -- no borra ni resetea nada (a
+// diferencia del cierre de joker), asi que se puede tocar las veces que
+// haga falta sin perder datos.
+export function buildPanelSummaryTicketLines(summary: EjemploPanelSummary, sales: EjemploSale[]) {
+  const lines: string[] = [];
+
+  lines.push(ESC_INIT);
+  lines.push(ALIGN_CENTER);
+  lines.push(BOLD_ON, DOUBLE_SIZE_ON);
+  lines.push(`${STORE_NAME}\n`);
+  lines.push(DOUBLE_SIZE_OFF, BOLD_OFF);
+  lines.push(BOLD_ON, TALL_SIZE_ON);
+  lines.push("CIERRE DE CAJA\n");
+  lines.push(DOUBLE_SIZE_OFF, BOLD_OFF);
+  lines.push(`${new Date().toLocaleString("es-UY", { timeZone: "America/Montevideo" })}\n`);
+  lines.push(`${INTERNAL_USE_NOTE}\n`);
+
+  lines.push(ALIGN_LEFT);
+  lines.push(`${decorativeBorder()}\n`);
+  lines.push(BOLD_ON);
+  lines.push("Tipo de pagos\n");
+  lines.push(BOLD_OFF);
+  lines.push(`${divider()}\n`);
+
+  (Object.keys(PAYMENT_METHOD_LABELS) as EjemploPaymentMethod[]).forEach((method) => {
+    if (method === "transferencia") return; // ver PanelScreen: ya no es una opcion al cobrar.
+    lines.push(`${rightAlignedLine(`${PAYMENT_METHOD_LABELS[method]} `, formatMoney(summary.paymentTotals[method] ?? 0))}\n`);
+  });
+
+  lines.push(`${decorativeBorder()}\n`);
+  lines.push(BOLD_ON, TALL_SIZE_ON);
+  lines.push(`${rightAlignedLine("Total vendido ", formatMoney(summary.totalVendido))}\n`);
+  lines.push(DOUBLE_SIZE_OFF, BOLD_OFF);
+  lines.push(`Ventas: ${summary.ventasCount}\n`);
+  lines.push("\n");
+
+  lines.push(`${decorativeBorder()}\n`);
+  lines.push(BOLD_ON);
+  lines.push("Productos mas vendidos\n");
+  lines.push(BOLD_OFF);
+  lines.push(`${divider()}\n`);
+
+  if (summary.topProducts.length) {
+    summary.topProducts.forEach((product, index) => {
+      lines.push(`${index + 1}) ${product.quantity}x ${product.productName}\n`);
+    });
+  } else {
+    lines.push("Sin ventas registradas.\n");
+  }
+
+  lines.push(`${decorativeBorder()}\n`);
+  lines.push(BOLD_ON);
+  lines.push(`Movimientos (${sales.length})\n`);
+  lines.push(BOLD_OFF);
+  lines.push(`${divider()}\n`);
+
+  if (sales.length) {
+    sales.forEach((sale) => {
+      const time = new Date(sale.createdAt).toLocaleTimeString("es-UY", { timeZone: "America/Montevideo", hour: "2-digit", minute: "2-digit" });
+      lines.push(`${rightAlignedLine(`${sale.quantity}x ${sale.productName} `, formatMoney(sale.total))}\n`);
+      lines.push(`  ${time} · ${PAYMENT_METHOD_LABELS[sale.paymentMethod]}\n`);
+    });
+  } else {
+    lines.push("Sin movimientos registrados.\n");
+  }
+
+  lines.push(`${decorativeBorder()}\n`);
   lines.push("\n");
 
   lines.push(ALIGN_CENTER);

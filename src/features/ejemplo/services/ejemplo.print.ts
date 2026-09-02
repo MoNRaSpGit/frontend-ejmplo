@@ -1,8 +1,8 @@
 import qz from "qz-tray";
 import { API_BASE_URL } from "../../../shared/config/api";
 import { printRawLinesByWebUsb } from "./ejemplo.webusbPrint";
-import { buildAccountSettlementTicketLines, buildSaleTicketLines } from "./ejemplo.ticketFormat";
-import { EjemploSale } from "../ejemplo.types";
+import { buildAccountSettlementTicketLines, buildPanelSummaryTicketLines, buildSaleTicketLines } from "./ejemplo.ticketFormat";
+import { EjemploPanelSummary, EjemploSale } from "../ejemplo.types";
 import { MockClient } from "../ejemplo.mockClients";
 
 // Impresion via QZ Tray con comandos ESC/POS crudos (igual que joker), para
@@ -151,6 +151,21 @@ export async function printSaleTicket(sales: EjemploSale[], clientName: string |
 // que el ticket de venta.
 export async function printAccountSettlementTicket(client: MockClient) {
   const lines = buildAccountSettlementTicketLines(client);
+  if (!lines.length) return;
+
+  if (cachedPrintMethod === "webusb") {
+    await printRawLinesByWebUsb(lines);
+    return;
+  }
+
+  await printRawLinesByQz(lines);
+}
+
+// Ticket de "Cerrar caja" del Panel de control -- ver
+// buildPanelSummaryTicketLines: por ahora es solo imprimir, no borra ni
+// resetea nada en el backend.
+export async function printPanelSummaryTicket(summary: EjemploPanelSummary, sales: EjemploSale[]) {
+  const lines = buildPanelSummaryTicketLines(summary, sales);
   if (!lines.length) return;
 
   if (cachedPrintMethod === "webusb") {
