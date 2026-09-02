@@ -3,13 +3,20 @@ import { toast } from "react-toastify";
 import { getPanelSummary, listSales } from "../ejemplo.client";
 import { EjemploPanelSummary, EjemploPaymentMethod, EjemploSale, PAYMENT_METHOD_LABELS } from "../ejemplo.types";
 
-const PAYMENT_METHODS: EjemploPaymentMethod[] = ["efectivo", "tarjeta", "transferencia", "cuenta"];
+// Se saca "transferencia" de este listado (no del tipo/backend, por si
+// queda alguna venta vieja con ese metodo) -- ya no es una opcion al
+// cobrar (ver PaymentMethodModal: Efectivo/POS/Cliente), asi que no tiene
+// sentido seguir mostrandole una tarjeta vacia en el resumen.
+const PAYMENT_METHODS: EjemploPaymentMethod[] = ["efectivo", "tarjeta", "cuenta"];
 const MOVEMENTS_PREVIEW_COUNT = 3;
 const MEDALS = ["🥇", "🥈", "🥉"];
 const MEDAL_CLASSES = ["ejemplo-qty-badge--gold", "ejemplo-qty-badge--silver", "ejemplo-qty-badge--bronze"];
 
+// "$" a secas, igual que el resto de la app (Productos, Cobrar, etc.) --
+// antes usaba Intl con moneda "USD", que en es-UY sale como "US$ 14,00"
+// en vez del "$14.00" simple que se ve en todos lados.
 function formatMoney(value: number) {
-  return value.toLocaleString("es-UY", { style: "currency", currency: "USD", minimumFractionDigits: 2 });
+  return `$${value.toFixed(2)}`;
 }
 
 function formatTime(isoDate: string) {
