@@ -25,21 +25,28 @@ const FOOTER_MESSAGE = "Gracias por tu compra!";
 // copies: cuantas veces se repite el ticket en el mismo trabajo de
 // impresion (mismo criterio que joker). Con 1 sale solo el ticket
 // completo (para el cliente, con precios). Con 2 sale ademas la copia
-// compacta "COMANDA" (para cocina/mostrador), sin "ARCHIVO" -- es el
-// default actual (ticket cliente + comanda, sin que el operario tenga que
-// elegir nada). Con 3 sale tambien la copia "ARCHIVO" (para que quede en
-// el local), por si en algun momento se vuelve a necesitar. Con 0 no se
+// para "COMANDA" (cocina/mostrador), sin "ARCHIVO" -- es el default
+// actual (ticket cliente + comanda, sin que el operario tenga que elegir
+// nada). Con 3 sale tambien la copia "ARCHIVO" (para que quede en el
+// local), por si en algun momento se vuelve a necesitar. Con 0 no se
 // imprime nada.
+//
+// Las tres copias son el mismo ticket completo (mismos datos: cliente,
+// pago, productos con precio, total) -- lo unico que cambia entre una y
+// otra es el titulo de arriba ("SU LOGO" para el cliente, "COMANDA" o
+// "ARCHIVO" para las otras dos). A proposito, para que las tres se vean
+// igual de prolijas -- antes la comanda/archivo era una version distinta,
+// sin precios ni datos de pago.
 export function buildSaleTicketLines(sales: EjemploSale[], clientName: string | undefined, copies: 0 | 1 | 2 | 3 = 2) {
   if (!sales.length || copies === 0) return [];
 
   const lines = buildFullTicketLines(sales, clientName);
 
   if (copies === 2 || copies === 3) {
-    lines.push(...buildCompactTicketLines(sales, "COMANDA"));
+    lines.push(...buildFullTicketLines(sales, clientName, "COMANDA"));
   }
   if (copies === 3) {
-    lines.push(...buildCompactTicketLines(sales, "ARCHIVO"));
+    lines.push(...buildFullTicketLines(sales, clientName, "ARCHIVO"));
   }
 
   return lines;
@@ -94,7 +101,10 @@ export function buildAccountSettlementTicketLines(client: MockClient) {
   return lines;
 }
 
-function buildFullTicketLines(sales: EjemploSale[], clientName?: string) {
+// heading: "SU LOGO" para el ticket del cliente (default), o "COMANDA"/
+// "ARCHIVO" para las otras copias -- ver buildSaleTicketLines. Es lo
+// unico que cambia entre una copia y otra.
+function buildFullTicketLines(sales: EjemploSale[], clientName?: string, heading: string = STORE_NAME) {
   const lines: string[] = [];
 
   const first = sales[0];
@@ -103,7 +113,7 @@ function buildFullTicketLines(sales: EjemploSale[], clientName?: string) {
   lines.push(ESC_INIT);
   lines.push(ALIGN_CENTER);
   lines.push(BOLD_ON, DOUBLE_SIZE_ON);
-  lines.push(`${STORE_NAME}\n`);
+  lines.push(`${heading}\n`);
   lines.push(DOUBLE_SIZE_OFF, BOLD_OFF);
   lines.push(`${new Date(first.createdAt).toLocaleString("es-UY", { timeZone: "America/Montevideo" })}\n`);
   lines.push(`${INTERNAL_USE_NOTE}\n`);
@@ -149,39 +159,3 @@ function buildFullTicketLines(sales: EjemploSale[], clientName?: string) {
   return lines;
 }
 
-// Version compacta sin precios (comanda/archivo): solo lo que hace falta
-// para preparar/registrar el pedido, en letra grande para leerse rapido
-// de lejos.
-function buildCompactTicketLines(sales: EjemploSale[], heading: "COMANDA" | "ARCHIVO") {
-  const lines: string[] = [];
-  const first = sales[0];
-
-  lines.push(ESC_INIT);
-  lines.push(ALIGN_CENTER);
-  lines.push(BOLD_ON, DOUBLE_SIZE_ON);
-  lines.push(`${heading}\n`);
-  lines.push(DOUBLE_SIZE_OFF, BOLD_OFF);
-  lines.push(`Venta #${first.id}\n`);
-  lines.push(`${new Date(first.createdAt).toLocaleTimeString("es-UY", { timeZone: "America/Montevideo" })}\n`);
-
-  lines.push(ALIGN_LEFT);
-  lines.push(`${decorativeBorder()}\n`);
-
-  sales.forEach((sale, index) => {
-    lines.push(BOLD_ON, DOUBLE_SIZE_ON);
-    lines.push(`${sale.quantity}x ${sale.productName}\n`);
-    lines.push(DOUBLE_SIZE_OFF, BOLD_OFF);
-    if (sale.detail?.trim()) {
-      lines.push(`${sale.detail.trim()}\n`);
-    }
-    if (index < sales.length - 1) {
-      lines.push(`${decorativeBorder()}\n`);
-    }
-  });
-
-  lines.push(`${decorativeBorder()}\n`);
-  lines.push("\n\n\n");
-  lines.push(CUT_PAPER);
-
-  return lines;
-}
