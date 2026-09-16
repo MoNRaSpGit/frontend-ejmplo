@@ -21,11 +21,22 @@ type EjemploEstablishment = {
 
 const NUMERO_EN_PALABRAS = ["uno", "dos", "tres", "cuatro", "cinco"];
 
-function normalize(value: string): string {
+export function normalize(value: string): string {
   return value
     .toLowerCase()
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "");
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// \b al final de una frase que termina en letra suelta (p. ej. "potrero
+// a") es indispensable -- sin eso, "potrero a" matchea como substring
+// adentro de "potrero amarillo" (bug real, 16/09/2026).
+function phraseRegex(phrase: string, flags = ""): RegExp {
+  return new RegExp(`\\b${escapeRegExp(phrase)}\\b`, flags);
 }
 
 function buildPotrero(establishmentLabel: string, potreroLabel: string, matchPhrases: string[]): EjemploPotrero {
@@ -64,7 +75,7 @@ export const EJEMPLO_FIELDS = EJEMPLO_POTREROS.map((potrero) => potrero.label);
 export function findFieldInText(text: string): string | null {
   const normalizedText = normalize(text);
   for (const potrero of EJEMPLO_POTREROS) {
-    if (potrero.matchPhrases.some((phrase) => normalizedText.includes(phrase))) {
+    if (potrero.matchPhrases.some((phrase) => phraseRegex(phrase).test(normalizedText))) {
       return potrero.label;
     }
   }
@@ -78,10 +89,28 @@ export function findAllFieldsInOrder(text: string): string[] {
   const normalizedText = normalize(text);
 
   const matches = EJEMPLO_POTREROS.map((potrero) => {
-    const indexes = potrero.matchPhrases.map((phrase) => normalizedText.indexOf(phrase)).filter((index) => index !== -1);
+    const indexes = potrero.matchPhrases
+      .map((phrase) => normalizedText.search(phraseRegex(phrase)))
+      .filter((index) => index !== -1);
     return { label: potrero.label, index: indexes.length ? Math.min(...indexes) : -1 };
   }).filter((match) => match.index !== -1);
 
   matches.sort((a, b) => a.index - b.index);
   return matches.map((match) => match.label);
+}
+
+// Saca del texto las menciones a potreros ("potrero 2", "potrero
+// amarillo") ANTES de buscar la cantidad o la categoria -- si no, un
+// digito o una palabra-numero que en realidad es parte del nombre del
+// potrero ("potrero 2", "potrero uno") se puede confundir con la
+// cantidad de animales (bug real, 16/09/2026: "potrero 2" hacia que la
+// cantidad diera 2 en vez del numero real dicho en la frase).
+export function stripPotreroMentions(text: string): string {
+  let result = normalize(text);
+  for (const potrero of EJEMPLO_POTREROS) {
+    for (const phrase of potrero.matchPhrases) {
+      result = result.replace(phraseRegex(phrase, "g"), " ");
+    }
+  }
+  return result;
 }
