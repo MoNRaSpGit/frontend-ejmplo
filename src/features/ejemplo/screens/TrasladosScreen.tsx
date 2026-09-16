@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { EJEMPLO_ANIMAL_CATEGORIES } from "../ejemplo.animalCategories";
-import { EJEMPLO_FIELDS } from "../ejemplo.fields";
+import { EJEMPLO_ESTABLISHMENTS, EJEMPLO_FIELDS } from "../ejemplo.fields";
 import { parseTransferCommand, type VoiceTransferCommand } from "../ejemplo.voiceTransfer";
 
 // Reconocimiento de voz del navegador -- mismo criterio que
@@ -132,8 +132,8 @@ export function TrasladosScreen() {
       <article className="ejemplo-panel">
         <h2>Traslados entre campos</h2>
         <p className="ejemplo-hint">
-          Simulacro de traslados de animales entre campos (como en frontend-agro, pero solo para probar acá) -- campos
-          fijos: {EJEMPLO_FIELDS.join(", ")}.
+          Simulacro de traslados de animales entre potreros (como en frontend-agro, pero solo para probar acá) --
+          establecimientos fijos: {EJEMPLO_ESTABLISHMENTS.map((establishment) => establishment.label).join(", ")}.
         </p>
 
         <div className="ejemplo-toolbar">
@@ -170,10 +170,14 @@ export function TrasladosScreen() {
           <label className="ejemplo-field">
             <span>Origen</span>
             <select value={form.origin} onChange={(event) => setForm((current) => ({ ...current, origin: event.target.value }))}>
-              {EJEMPLO_FIELDS.map((field) => (
-                <option key={field} value={field}>
-                  {field}
-                </option>
+              {EJEMPLO_ESTABLISHMENTS.map((establishment) => (
+                <optgroup key={establishment.label} label={establishment.label}>
+                  {establishment.potreros.map((potrero) => (
+                    <option key={potrero.label} value={potrero.label}>
+                      Potrero {potrero.potreroLabel}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </label>
@@ -183,10 +187,14 @@ export function TrasladosScreen() {
               value={form.destination}
               onChange={(event) => setForm((current) => ({ ...current, destination: event.target.value }))}
             >
-              {EJEMPLO_FIELDS.map((field) => (
-                <option key={field} value={field}>
-                  {field}
-                </option>
+              {EJEMPLO_ESTABLISHMENTS.map((establishment) => (
+                <optgroup key={establishment.label} label={establishment.label}>
+                  {establishment.potreros.map((potrero) => (
+                    <option key={potrero.label} value={potrero.label}>
+                      Potrero {potrero.potreroLabel}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </label>
