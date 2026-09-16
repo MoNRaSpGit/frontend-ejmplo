@@ -241,19 +241,14 @@ export function ClientesScreen({ clients, onClientsChange, mockClients, onSettle
     <section className="ejemplo-screen">
       <MockClientsPanel mockClients={mockClients} onSettleMockClient={onSettleMockClient} />
 
+      {/* 3 columnas -- pedido explicito (16/09/2026): "un lado para crear
+          clientes, otro que nos muestre todos los clientes en el medio,
+          y a la derecha, si selecciono un cliente, la informacion". */}
       <section className="ejemplo-clients-layout">
-      <article className="ejemplo-panel">
-        <h2>Contactos</h2>
-        <div className="ejemplo-toolbar">
-          <input
-            className="ejemplo-search"
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="Buscar cliente..."
-          />
-        </div>
+      <article className="ejemplo-panel ejemplo-clients-create">
+        <h2>Crear cliente</h2>
 
-        <div className="ejemplo-form-grid">
+        <div className="ejemplo-form-grid ejemplo-form-grid--stacked">
           <label className="ejemplo-field">
             <span>Nombre</span>
             <input value={newClientForm.name} onChange={(event) => setNewClientForm((current) => ({ ...current, name: event.target.value }))} />
@@ -263,20 +258,31 @@ export function ClientesScreen({ clients, onClientsChange, mockClients, onSettle
             <input value={newClientForm.phone} onChange={(event) => setNewClientForm((current) => ({ ...current, phone: event.target.value }))} />
           </label>
         </div>
-        <div className="ejemplo-toolbar">
-          <button type="button" className="ejemplo-button ejemplo-button--ghost" onClick={handleCreateClient} disabled={isSavingClient}>
-            {isSavingClient ? "Guardando..." : "+ Agregar cliente"}
-          </button>
-          <button
-            type="button"
-            className={isListening ? "ejemplo-button ejemplo-button--voice is-listening" : "ejemplo-button ejemplo-button--voice"}
-            onClick={handleToggleVoice}
-            disabled={isSavingClient}
-          >
-            {isListening ? "Escuchando..." : "Decir cliente"}
-          </button>
-        </div>
+
+        <button type="button" className="ejemplo-button ejemplo-button--ghost" onClick={handleCreateClient} disabled={isSavingClient}>
+          {isSavingClient ? "Guardando..." : "+ Agregar cliente"}
+        </button>
+        <button
+          type="button"
+          className={isListening ? "ejemplo-button ejemplo-button--voice is-listening" : "ejemplo-button ejemplo-button--voice"}
+          onClick={handleToggleVoice}
+          disabled={isSavingClient}
+        >
+          {isListening ? "Escuchando..." : "Decir cliente"}
+        </button>
         {lastHeard ? <p className="ejemplo-hint">Escuché: "{lastHeard}"</p> : null}
+      </article>
+
+      <article className="ejemplo-panel ejemplo-clients-list-panel">
+        <h2>Clientes</h2>
+        <div className="ejemplo-toolbar">
+          <input
+            className="ejemplo-search"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Buscar cliente..."
+          />
+        </div>
 
         <div className="ejemplo-client-list">
           {filteredClients.map((client) => (
@@ -306,7 +312,7 @@ export function ClientesScreen({ clients, onClientsChange, mockClients, onSettle
         </div>
       </article>
 
-      <article className="ejemplo-panel">
+      <article className="ejemplo-panel ejemplo-clients-detail">
         {selectedClient ? (
           <>
             <h2>{selectedClient.name}</h2>

@@ -342,14 +342,39 @@ h3 {
 
 /* ---------- Layout helpers ---------- */
 
+/* 3 columnas -- pedido explicito (16/09/2026): crear (izquierda) / lista
+   completa (medio) / detalle del seleccionado (derecha). Antes esta
+   clase no tenia "display: grid" seteado en ningun lado, asi que las 2
+   columnas viejas ni se aplicaban -- bug de raiz que se aprovecha para
+   arreglar de paso. */
 .ejemplo-clients-layout {
-  grid-template-columns: 1fr 1.2fr;
+  display: grid;
+  grid-template-columns: 300px 1fr 1.3fr;
+  gap: 20px;
   align-items: start;
+}
+
+.ejemplo-form-grid--stacked {
+  grid-template-columns: 1fr;
+}
+
+@media (max-width: 1080px) {
+  .ejemplo-clients-layout {
+    grid-template-columns: 280px 1fr;
+  }
+
+  .ejemplo-clients-detail {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 760px) {
   .ejemplo-clients-layout {
     grid-template-columns: 1fr;
+  }
+
+  .ejemplo-clients-detail {
+    grid-column: auto;
   }
 }
 
