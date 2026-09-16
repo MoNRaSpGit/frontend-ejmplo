@@ -1,4 +1,4 @@
-import { ArrowLeftRight, Boxes, LayoutDashboard, Menu, Printer, ShoppingBag, Store, UserRound, Users } from "lucide-react";
+import { Boxes, LayoutDashboard, Menu, Printer, ShoppingBag, Store, UserRound, Users } from "lucide-react";
 import { useEffect, useRef, useState, type ComponentType } from "react";
 import { toast } from "react-toastify";
 import { listClients, listProducts, listRubros } from "./ejemplo.client";
@@ -6,20 +6,18 @@ import { ClientesScreen } from "./screens/ClientesScreen";
 import { PanelScreen } from "./screens/PanelScreen";
 import { ProductosScreen } from "./screens/ProductosScreen";
 import { StockScreen } from "./screens/StockScreen";
-import { TrasladosScreen } from "./screens/TrasladosScreen";
 import { PrinterSettingsModal } from "./components/PrinterSettingsModal";
 import { getPreferredPrinterName, getPrintMethod } from "./services/ejemplo.print";
 import { getCachedUsbPrinterName, primeUsbPrinterConnection } from "./services/ejemplo.webusbPrint";
 import { EjemploClient, EjemploProduct } from "./ejemplo.types";
 import { MockPurchase, getInitialMockClients } from "./ejemplo.mockClients";
 
-type ViewMode = "productos" | "stock" | "clientes" | "traslados" | "panel";
+type ViewMode = "productos" | "stock" | "clientes" | "panel";
 
 const VIEW_LABELS: Record<ViewMode, string> = {
   productos: "Productos",
   stock: "Stock",
   clientes: "Clientes",
-  traslados: "Traslados",
   panel: "Panel de control"
 };
 
@@ -27,11 +25,10 @@ const VIEW_ICONS: Record<ViewMode, ComponentType<{ size?: number; strokeWidth?: 
   productos: ShoppingBag,
   stock: Boxes,
   clientes: Users,
-  traslados: ArrowLeftRight,
   panel: LayoutDashboard
 };
 
-const VIEW_ORDER: ViewMode[] = ["productos", "stock", "clientes", "traslados", "panel"];
+const VIEW_ORDER: ViewMode[] = ["productos", "stock", "clientes", "panel"];
 
 // Placeholder de marca (mismo criterio que el ticket, ver STORE_NAME en
 // ejemplo.ticketFormat.ts): en vez de mostrar el rubro elegido ("Cafeteria",
@@ -137,10 +134,6 @@ export function EjemploHomePage() {
     );
   }
 
-  function settleMockClient(clientId: string) {
-    setMockClients((current) => current.map((client) => (client.id === clientId ? { ...client, purchases: [] } : client)));
-  }
-
   if (isLoading) {
     return (
       <main className="ejemplo-app">
@@ -211,15 +204,7 @@ export function EjemploHomePage() {
         {viewMode === "stock" ? (
           <StockScreen rubro={rubro} products={products} onProductsChange={setProducts} />
         ) : null}
-        {viewMode === "clientes" ? (
-          <ClientesScreen
-            clients={clients}
-            onClientsChange={setClients}
-            mockClients={mockClients}
-            onSettleMockClient={settleMockClient}
-          />
-        ) : null}
-        {viewMode === "traslados" ? <TrasladosScreen /> : null}
+        {viewMode === "clientes" ? <ClientesScreen clients={clients} onClientsChange={setClients} /> : null}
         {viewMode === "panel" ? <PanelScreen rubro={rubro} /> : null}
       </main>
 

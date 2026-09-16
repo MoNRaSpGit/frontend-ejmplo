@@ -1,119 +1,26 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { createClient, deleteClient, listAccountEntries, settleAccountEntries } from "../ejemplo.client";
 import { EjemploAccountEntry, EjemploClient } from "../ejemplo.types";
-import { MockClient, getMockClientTotal } from "../ejemplo.mockClients";
-import { printAccountSettlementTicket } from "../services/ejemplo.print";
-import { parseRegisterClientCommand } from "../ejemplo.voiceCommand";
-
-// Reconocimiento de voz del navegador (Chrome/Edge) -- sin tipos propios
-// en TS, se declara lo minimo que se usa aca.
-type SpeechRecognitionResultLike = { transcript: string };
-type SpeechRecognitionLike = {
-  lang: string;
-  continuous: boolean;
-  interimResults: boolean;
-  start: () => void;
-  stop: () => void;
-  onresult: ((event: { results: ArrayLike<ArrayLike<SpeechRecognitionResultLike>> }) => void) | null;
-  onerror: (() => void) | null;
-  onend: (() => void) | null;
-};
-
-function createSpeechRecognition(): SpeechRecognitionLike | null {
-  const w = window as typeof window & {
-    SpeechRecognition?: new () => SpeechRecognitionLike;
-    webkitSpeechRecognition?: new () => SpeechRecognitionLike;
-  };
-  const Ctor = w.SpeechRecognition ?? w.webkitSpeechRecognition;
-  return Ctor ? new Ctor() : null;
-}
 
 type ClientesScreenProps = {
   clients: EjemploClient[];
   onClientsChange: (clients: EjemploClient[]) => void;
-  mockClients: MockClient[];
-  onSettleMockClient: (clientId: string) => void;
 };
 
-// Panel de "cuenta cliente" ficticia (ver ejemplo.mockClients.ts): muestra
-// los 3 clientes de prueba con su historial inventado y un boton "Pago"
-// que imprime el ticket de saldo y borra la deuda en memoria -- al
-// recargar la pagina vuelve a aparecer la deuda original (nada de esto se
-// guarda en el backend todavia).
-function MockClientsPanel({ mockClients, onSettleMockClient }: { mockClients: MockClient[]; onSettleMockClient: (clientId: string) => void }) {
-  const [payingClientId, setPayingClientId] = useState<string | null>(null);
-
-  async function handlePay(client: MockClient) {
-    if (!client.purchases.length || payingClientId) return;
-    setPayingClientId(client.id);
-    try {
-      await printAccountSettlementTicket(client);
-      onSettleMockClient(client.id);
-      toast.success(`Cuenta de ${client.name} saldada.`);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "No se pudo imprimir el ticket de pago.");
-    } finally {
-      setPayingClientId(null);
-    }
-  }
-
-  return (
-    <article className="ejemplo-panel ejemplo-mock-clients">
-      <h2>Cuenta cliente (prueba)</h2>
-      <p className="ejemplo-hint">
-        Datos ficticios para probar el flujo -- al recargar la pagina vuelven a su estado original.
-      </p>
-      <div className="ejemplo-client-list">
-        {mockClients.map((client) => {
-          const total = getMockClientTotal(client);
-          return (
-            <div key={client.id} className="ejemplo-mock-client-card">
-              <div className="ejemplo-mock-client-card__header">
-                <strong>{client.name}</strong>
-                <span className={total > 0 ? "ejemplo-tag ejemplo-tag--pending" : "ejemplo-tag ejemplo-tag--ok"}>
-                  {total > 0 ? `Debe $${total.toFixed(2)}` : "Al dia"}
-                </span>
-              </div>
-              {client.purchases.length ? (
-                <div className="ejemplo-entries-list">
-                  {client.purchases.map((purchase) => (
-                    <div key={purchase.id} className="ejemplo-entry-row">
-                      <span>{purchase.dateLabel}</span>
-                      <span>{purchase.productName}</span>
-                      <strong>${purchase.amount.toFixed(2)}</strong>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="ejemplo-empty">Sin compras pendientes.</p>
-              )}
-              <button
-                type="button"
-                className="ejemplo-button"
-                onClick={() => void handlePay(client)}
-                disabled={!client.purchases.length || payingClientId === client.id}
-              >
-                {payingClientId === client.id ? "Imprimiendo..." : "Pago"}
-              </button>
-            </div>
-          );
-        })}
-      </div>
-    </article>
-  );
-}
-
-export function ClientesScreen({ clients, onClientsChange, mockClients, onSettleMockClient }: ClientesScreenProps) {
+// 3 columnas -- pedido explicito (16/09/2026): "un lado para crear
+// clientes, otro que nos muestre todos los clientes en el medio, y a la
+// derecha, si selecciono un cliente, la informacion". El panel de
+// "cuenta cliente (prueba)" y el alta por voz que vivian aca se sacan
+// (pedido explicito, mismo dia): eran pruebas, ya cumplieron su
+// proposito.
+export function ClientesScreen({ clients, onClientsChange }: ClientesScreenProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedClientId, setSelectedClientId] = useState("");
   const [entries, setEntries] = useState<EjemploAccountEntry[]>([]);
   const [isLoadingEntries, setIsLoadingEntries] = useState(false);
   const [newClientForm, setNewClientForm] = useState({ name: "", phone: "" });
   const [isSavingClient, setIsSavingClient] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const [lastHeard, setLastHeard] = useState("");
-  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
   const filteredClients = clients.filter((client) => client.name.toLowerCase().includes(searchTerm.trim().toLowerCase()));
   const selectedClient = clients.find((client) => client.id === selectedClientId) ?? null;
@@ -143,15 +50,15 @@ export function ClientesScreen({ clients, onClientsChange, mockClients, onSettle
     };
   }, [selectedClientId]);
 
-  async function saveClient(name: string, phone: string) {
-    if (!name.trim()) {
+  async function handleCreateClient() {
+    if (!newClientForm.name.trim()) {
       toast.error("Falta el nombre del cliente.");
       return;
     }
 
     setIsSavingClient(true);
     try {
-      const item = await createClient({ name: name.trim(), phone: phone.trim() });
+      const item = await createClient({ name: newClientForm.name.trim(), phone: newClientForm.phone.trim() });
       onClientsChange([...clients, item]);
       setNewClientForm({ name: "", phone: "" });
       toast.success("Cliente agregado.");
@@ -160,59 +67,6 @@ export function ClientesScreen({ clients, onClientsChange, mockClients, onSettle
     } finally {
       setIsSavingClient(false);
     }
-  }
-
-  function handleCreateClient() {
-    void saveClient(newClientForm.name, newClientForm.phone);
-  }
-
-  // Alta de cliente hablando -- pedido explicito (16/09/2026): "registra
-  // a Juan numero de telefono 0991234567". Usa el reconocimiento de voz
-  // del navegador (gratis, sin servicios de terceros) + un interprete de
-  // texto simple (ver ejemplo.voiceCommand.ts), no hay ninguna IA de por
-  // medio todavia.
-  function handleToggleVoice() {
-    if (isListening) {
-      recognitionRef.current?.stop();
-      return;
-    }
-
-    const recognition = createSpeechRecognition();
-    if (!recognition) {
-      toast.error("Tu navegador no permite reconocimiento de voz. Probá con Chrome.");
-      return;
-    }
-
-    recognition.lang = "es-UY";
-    recognition.continuous = false;
-    recognition.interimResults = false;
-
-    recognition.onresult = (event) => {
-      const transcript = event.results[0]?.[0]?.transcript ?? "";
-      setLastHeard(transcript);
-
-      const command = parseRegisterClientCommand(transcript);
-      if (!command) {
-        toast.error(`No entendí ese comando: "${transcript}". Probá decir "Registrá a [nombre] teléfono [número]".`);
-        return;
-      }
-
-      void saveClient(command.name, command.phone);
-    };
-
-    recognition.onerror = () => {
-      toast.error("No se pudo escuchar bien. Probá de nuevo.");
-      setIsListening(false);
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-    };
-
-    recognitionRef.current = recognition;
-    setIsListening(true);
-    setLastHeard("");
-    recognition.start();
   }
 
   async function handleDeleteClient(clientId: string) {
@@ -239,113 +93,105 @@ export function ClientesScreen({ clients, onClientsChange, mockClients, onSettle
 
   return (
     <section className="ejemplo-screen">
-      <MockClientsPanel mockClients={mockClients} onSettleMockClient={onSettleMockClient} />
-
-      {/* 3 columnas -- pedido explicito (16/09/2026): "un lado para crear
-          clientes, otro que nos muestre todos los clientes en el medio,
-          y a la derecha, si selecciono un cliente, la informacion". */}
       <section className="ejemplo-clients-layout">
-      <article className="ejemplo-panel ejemplo-clients-create">
-        <h2>Crear cliente</h2>
+        <article className="ejemplo-panel ejemplo-clients-create">
+          <h2>Crear cliente</h2>
 
-        <div className="ejemplo-form-grid ejemplo-form-grid--stacked">
-          <label className="ejemplo-field">
-            <span>Nombre</span>
-            <input value={newClientForm.name} onChange={(event) => setNewClientForm((current) => ({ ...current, name: event.target.value }))} />
-          </label>
-          <label className="ejemplo-field">
-            <span>Telefono</span>
-            <input value={newClientForm.phone} onChange={(event) => setNewClientForm((current) => ({ ...current, phone: event.target.value }))} />
-          </label>
-        </div>
+          <div className="ejemplo-form-grid ejemplo-form-grid--stacked">
+            <label className="ejemplo-field">
+              <span>Nombre</span>
+              <input
+                value={newClientForm.name}
+                onChange={(event) => setNewClientForm((current) => ({ ...current, name: event.target.value }))}
+              />
+            </label>
+            <label className="ejemplo-field">
+              <span>Telefono</span>
+              <input
+                value={newClientForm.phone}
+                onChange={(event) => setNewClientForm((current) => ({ ...current, phone: event.target.value }))}
+              />
+            </label>
+          </div>
 
-        <button type="button" className="ejemplo-button ejemplo-button--ghost" onClick={handleCreateClient} disabled={isSavingClient}>
-          {isSavingClient ? "Guardando..." : "+ Agregar cliente"}
-        </button>
-        <button
-          type="button"
-          className={isListening ? "ejemplo-button ejemplo-button--voice is-listening" : "ejemplo-button ejemplo-button--voice"}
-          onClick={handleToggleVoice}
-          disabled={isSavingClient}
-        >
-          {isListening ? "Escuchando..." : "Decir cliente"}
-        </button>
-        {lastHeard ? <p className="ejemplo-hint">Escuché: "{lastHeard}"</p> : null}
-      </article>
+          <button type="button" className="ejemplo-button ejemplo-button--ghost" onClick={handleCreateClient} disabled={isSavingClient}>
+            {isSavingClient ? "Guardando..." : "+ Agregar cliente"}
+          </button>
+        </article>
 
-      <article className="ejemplo-panel ejemplo-clients-list-panel">
-        <h2>Clientes</h2>
-        <div className="ejemplo-toolbar">
-          <input
-            className="ejemplo-search"
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="Buscar cliente..."
-          />
-        </div>
+        <article className="ejemplo-panel ejemplo-clients-list-panel">
+          <h2>Clientes</h2>
+          <div className="ejemplo-toolbar">
+            <input
+              className="ejemplo-search"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Buscar cliente..."
+            />
+          </div>
 
-        <div className="ejemplo-client-list">
-          {filteredClients.map((client) => (
-            <div
-              key={client.id}
-              className={`ejemplo-client-row ${selectedClientId === client.id ? "is-selected" : ""}`}
-              onClick={() => setSelectedClientId(client.id)}
-            >
-              <div>
-                <strong>{client.name}</strong>
-                {client.phone ? <span> · {client.phone}</span> : null}
-              </div>
-              <button
-                type="button"
-                className="ejemplo-button--icon"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  handleDeleteClient(client.id);
-                }}
-                aria-label={`Eliminar ${client.name}`}
+          <div className="ejemplo-client-list">
+            {filteredClients.map((client) => (
+              <div
+                key={client.id}
+                className={`ejemplo-client-row ${selectedClientId === client.id ? "is-selected" : ""}`}
+                onClick={() => setSelectedClientId(client.id)}
               >
-                x
-              </button>
-            </div>
-          ))}
-          {!filteredClients.length ? <p className="ejemplo-empty">No hay clientes cargados.</p> : null}
-        </div>
-      </article>
-
-      <article className="ejemplo-panel ejemplo-clients-detail">
-        {selectedClient ? (
-          <>
-            <h2>{selectedClient.name}</h2>
-            <p className="ejemplo-hint">Cuenta corriente</p>
-            <div className="ejemplo-balance">Debe: ${pendingTotal.toFixed(2)}</div>
-
-            {isLoadingEntries ? (
-              <p className="ejemplo-empty">Cargando...</p>
-            ) : (
-              <div className="ejemplo-entries-list">
-                {entries.map((entry) => (
-                  <div key={entry.id} className="ejemplo-entry-row">
-                    <span>{new Date(entry.createdAt).toLocaleDateString("es-UY")}</span>
-                    <strong>${entry.total.toFixed(2)}</strong>
-                    <span className={entry.isSettled ? "ejemplo-tag ejemplo-tag--ok" : "ejemplo-tag ejemplo-tag--pending"}>
-                      {entry.isSettled ? "Pagado" : "Pendiente"}
-                    </span>
-                  </div>
-                ))}
-                {!entries.length ? <p className="ejemplo-empty">Sin movimientos.</p> : null}
+                <div>
+                  <strong>{client.name}</strong>
+                  {client.phone ? <span> · {client.phone}</span> : null}
+                </div>
+                <button
+                  type="button"
+                  className="ejemplo-button--icon"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    handleDeleteClient(client.id);
+                  }}
+                  aria-label={`Eliminar ${client.name}`}
+                >
+                  x
+                </button>
               </div>
-            )}
+            ))}
+            {!filteredClients.length ? <p className="ejemplo-empty">No hay clientes cargados.</p> : null}
+          </div>
+        </article>
 
-            {pendingTotal > 0 ? (
-              <button type="button" className="ejemplo-button" onClick={handleSettle}>
-                Marcar como pagado
-              </button>
-            ) : null}
-          </>
-        ) : (
-          <p className="ejemplo-empty">Elegi un cliente para ver su cuenta corriente.</p>
-        )}
-      </article>
+        <article className="ejemplo-panel ejemplo-clients-detail">
+          {selectedClient ? (
+            <>
+              <h2>{selectedClient.name}</h2>
+              <p className="ejemplo-hint">Cuenta corriente</p>
+              <div className="ejemplo-balance">Debe: ${pendingTotal.toFixed(2)}</div>
+
+              {isLoadingEntries ? (
+                <p className="ejemplo-empty">Cargando...</p>
+              ) : (
+                <div className="ejemplo-entries-list">
+                  {entries.map((entry) => (
+                    <div key={entry.id} className="ejemplo-entry-row">
+                      <span>{new Date(entry.createdAt).toLocaleDateString("es-UY")}</span>
+                      <strong>${entry.total.toFixed(2)}</strong>
+                      <span className={entry.isSettled ? "ejemplo-tag ejemplo-tag--ok" : "ejemplo-tag ejemplo-tag--pending"}>
+                        {entry.isSettled ? "Pagado" : "Pendiente"}
+                      </span>
+                    </div>
+                  ))}
+                  {!entries.length ? <p className="ejemplo-empty">Sin movimientos.</p> : null}
+                </div>
+              )}
+
+              {pendingTotal > 0 ? (
+                <button type="button" className="ejemplo-button" onClick={handleSettle}>
+                  Marcar como pagado
+                </button>
+              ) : null}
+            </>
+          ) : (
+            <p className="ejemplo-empty">Elegi un cliente para ver su cuenta corriente.</p>
+          )}
+        </article>
       </section>
     </section>
   );

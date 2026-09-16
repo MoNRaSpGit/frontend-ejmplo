@@ -497,24 +497,6 @@ h3 {
   border-color: #5c1a22;
 }
 
-/* Alta de cliente hablando (16/09/2026) -- pulso simple para que se
-   note claramente que el microfono esta escuchando. */
-.ejemplo-button--voice.is-listening {
-  background: #b3261e;
-  border-color: #b3261e;
-  color: #fff;
-  animation: ejemplo-voice-pulse 1.2s ease-in-out infinite;
-}
-
-@keyframes ejemplo-voice-pulse {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(179, 38, 30, 0.45);
-  }
-  50% {
-    box-shadow: 0 0 0 8px rgba(179, 38, 30, 0);
-  }
-}
-
 .ejemplo-button--cobrar:hover:not(:disabled) {
   background: #46141a;
   border-color: #46141a;
@@ -833,31 +815,6 @@ h3 {
 .ejemplo-entries-list {
   display: grid;
   gap: 10px;
-}
-
-/* ---------- Cuenta cliente ficticia (Clientes / prueba) ---------- */
-
-.ejemplo-mock-clients .ejemplo-client-list {
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  display: grid;
-  max-height: none;
-}
-
-.ejemplo-mock-client-card {
-  display: grid;
-  gap: 13px;
-  padding: 18px;
-  border: 1px solid var(--ej-border);
-  border-radius: var(--ej-radius-sm);
-  background: var(--ej-surface);
-}
-
-.ejemplo-mock-client-card__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 13px;
-  font-size: 23px;
 }
 
 .ejemplo-entry-row {
