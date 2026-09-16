@@ -472,6 +472,24 @@ h3 {
   border-color: #5c1a22;
 }
 
+/* Alta de cliente hablando (16/09/2026) -- pulso simple para que se
+   note claramente que el microfono esta escuchando. */
+.ejemplo-button--voice.is-listening {
+  background: #b3261e;
+  border-color: #b3261e;
+  color: #fff;
+  animation: ejemplo-voice-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes ejemplo-voice-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(179, 38, 30, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(179, 38, 30, 0);
+  }
+}
+
 .ejemplo-button--cobrar:hover:not(:disabled) {
   background: #46141a;
   border-color: #46141a;

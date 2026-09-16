@@ -1,9 +1,33 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { createClient, deleteClient, listAccountEntries, settleAccountEntries } from "../ejemplo.client";
 import { EjemploAccountEntry, EjemploClient } from "../ejemplo.types";
 import { MockClient, getMockClientTotal } from "../ejemplo.mockClients";
 import { printAccountSettlementTicket } from "../services/ejemplo.print";
+import { parseRegisterClientCommand } from "../ejemplo.voiceCommand";
+
+// Reconocimiento de voz del navegador (Chrome/Edge) -- sin tipos propios
+// en TS, se declara lo minimo que se usa aca.
+type SpeechRecognitionResultLike = { transcript: string };
+type SpeechRecognitionLike = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  start: () => void;
+  stop: () => void;
+  onresult: ((event: { results: ArrayLike<ArrayLike<SpeechRecognitionResultLike>> }) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+};
+
+function createSpeechRecognition(): SpeechRecognitionLike | null {
+  const w = window as typeof window & {
+    SpeechRecognition?: new () => SpeechRecognitionLike;
+    webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+  };
+  const Ctor = w.SpeechRecognition ?? w.webkitSpeechRecognition;
+  return Ctor ? new Ctor() : null;
+}
 
 type ClientesScreenProps = {
   clients: EjemploClient[];
@@ -87,6 +111,9 @@ export function ClientesScreen({ clients, onClientsChange, mockClients, onSettle
   const [isLoadingEntries, setIsLoadingEntries] = useState(false);
   const [newClientForm, setNewClientForm] = useState({ name: "", phone: "" });
   const [isSavingClient, setIsSavingClient] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [lastHeard, setLastHeard] = useState("");
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
   const filteredClients = clients.filter((client) => client.name.toLowerCase().includes(searchTerm.trim().toLowerCase()));
   const selectedClient = clients.find((client) => client.id === selectedClientId) ?? null;
@@ -116,15 +143,15 @@ export function ClientesScreen({ clients, onClientsChange, mockClients, onSettle
     };
   }, [selectedClientId]);
 
-  async function handleCreateClient() {
-    if (!newClientForm.name.trim()) {
+  async function saveClient(name: string, phone: string) {
+    if (!name.trim()) {
       toast.error("Falta el nombre del cliente.");
       return;
     }
 
     setIsSavingClient(true);
     try {
-      const item = await createClient({ name: newClientForm.name.trim(), phone: newClientForm.phone.trim() });
+      const item = await createClient({ name: name.trim(), phone: phone.trim() });
       onClientsChange([...clients, item]);
       setNewClientForm({ name: "", phone: "" });
       toast.success("Cliente agregado.");
@@ -133,6 +160,59 @@ export function ClientesScreen({ clients, onClientsChange, mockClients, onSettle
     } finally {
       setIsSavingClient(false);
     }
+  }
+
+  function handleCreateClient() {
+    void saveClient(newClientForm.name, newClientForm.phone);
+  }
+
+  // Alta de cliente hablando -- pedido explicito (16/09/2026): "registra
+  // a Juan numero de telefono 0991234567". Usa el reconocimiento de voz
+  // del navegador (gratis, sin servicios de terceros) + un interprete de
+  // texto simple (ver ejemplo.voiceCommand.ts), no hay ninguna IA de por
+  // medio todavia.
+  function handleToggleVoice() {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+
+    const recognition = createSpeechRecognition();
+    if (!recognition) {
+      toast.error("Tu navegador no permite reconocimiento de voz. Probá con Chrome.");
+      return;
+    }
+
+    recognition.lang = "es-UY";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0]?.[0]?.transcript ?? "";
+      setLastHeard(transcript);
+
+      const command = parseRegisterClientCommand(transcript);
+      if (!command) {
+        toast.error(`No entendí ese comando: "${transcript}". Probá decir "Registrá a [nombre] teléfono [número]".`);
+        return;
+      }
+
+      void saveClient(command.name, command.phone);
+    };
+
+    recognition.onerror = () => {
+      toast.error("No se pudo escuchar bien. Probá de nuevo.");
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+    setIsListening(true);
+    setLastHeard("");
+    recognition.start();
   }
 
   async function handleDeleteClient(clientId: string) {
@@ -183,9 +263,20 @@ export function ClientesScreen({ clients, onClientsChange, mockClients, onSettle
             <input value={newClientForm.phone} onChange={(event) => setNewClientForm((current) => ({ ...current, phone: event.target.value }))} />
           </label>
         </div>
-        <button type="button" className="ejemplo-button ejemplo-button--ghost" onClick={handleCreateClient} disabled={isSavingClient}>
-          {isSavingClient ? "Guardando..." : "+ Agregar cliente"}
-        </button>
+        <div className="ejemplo-toolbar">
+          <button type="button" className="ejemplo-button ejemplo-button--ghost" onClick={handleCreateClient} disabled={isSavingClient}>
+            {isSavingClient ? "Guardando..." : "+ Agregar cliente"}
+          </button>
+          <button
+            type="button"
+            className={isListening ? "ejemplo-button ejemplo-button--voice is-listening" : "ejemplo-button ejemplo-button--voice"}
+            onClick={handleToggleVoice}
+            disabled={isSavingClient}
+          >
+            {isListening ? "Escuchando..." : "Decir cliente"}
+          </button>
+        </div>
+        {lastHeard ? <p className="ejemplo-hint">Escuché: "{lastHeard}"</p> : null}
 
         <div className="ejemplo-client-list">
           {filteredClients.map((client) => (
