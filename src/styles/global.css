@@ -722,18 +722,54 @@ h3 {
   bottom: 21px;
 }
 
-.ejemplo-cart__line {
-  display: flex;
-  align-items: center;
-  gap: 21px;
-  flex-wrap: wrap;
-  padding: 13px 0;
-  border-bottom: 1px solid var(--ej-border);
+.ejemplo-cart__list {
+  display: grid;
+  gap: 12px;
 }
 
-.ejemplo-cart__line > div:first-child {
-  flex: 1;
-  min-width: 182px;
+/* Grid de columnas fijas (16/09/2026) -- antes era flex con solo la
+   primera columna con ancho definido, asi que un nombre de producto mas
+   largo o mas corto corria el resto de la fila (cantidad/total/quitar)
+   a posiciones distintas entre una fila y otra. Con columnas fijas,
+   cantidad/total/quitar quedan siempre alineados verticalmente sea cual
+   sea el largo del nombre. Cada linea es ademas su propia "tarjetita"
+   (fondo + borde propio) en vez de solo una raya abajo, para que se
+   note mas trabajada. */
+.ejemplo-cart__line {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  gap: 20px;
+  padding: 16px 18px;
+  border: 1px solid var(--ej-border);
+  border-radius: var(--ej-radius-sm);
+  background: var(--ej-surface);
+}
+
+.ejemplo-cart__line-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ejemplo-cart__line-name {
+  font-weight: 700;
+  font-size: 19px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ejemplo-cart__line-unit-price {
+  color: var(--ej-muted);
+  font-size: 16px;
+}
+
+.ejemplo-cart__line-total {
+  min-width: 88px;
+  text-align: right;
+  font-size: 19px;
 }
 
 /* Bloque de total + Cobrar, separado visualmente de la lista de productos

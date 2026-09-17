@@ -188,12 +188,12 @@ export function ProductosScreen({ products, mockClients, onAddMockPurchases }: P
       {cart.length ? (
         <article className="ejemplo-panel ejemplo-cart">
           <h2>Venta actual</h2>
-          <div className="ejemplo-client-list">
+          <div className="ejemplo-cart__list">
             {cart.map((line) => (
               <div key={line.key} className="ejemplo-cart__line">
-                <div>
-                  <strong>{line.product.name}</strong>
-                  <span> · ${line.product.price.toFixed(2)} c/u</span>
+                <div className="ejemplo-cart__line-info">
+                  <span className="ejemplo-cart__line-name">{line.product.name}</span>
+                  <span className="ejemplo-cart__line-unit-price">${line.product.price.toFixed(2)} c/u</span>
                   {line.detail ? <p className="ejemplo-hint">{line.detail}</p> : null}
                 </div>
                 <div className="ejemplo-quantity-stepper">
@@ -205,7 +205,7 @@ export function ProductosScreen({ products, mockClients, onAddMockPurchases }: P
                     +
                   </button>
                 </div>
-                <strong>${(line.product.price * line.quantity).toFixed(2)}</strong>
+                <strong className="ejemplo-cart__line-total">${(line.product.price * line.quantity).toFixed(2)}</strong>
                 <button
                   type="button"
                   className="ejemplo-button--icon"
