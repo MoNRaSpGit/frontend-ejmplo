@@ -1,38 +1,47 @@
-import { useState } from "react";
-import { MockClient } from "../ejemplo.mockClients";
+import { useMemo, useState } from "react";
+import { EjemploClient } from "../ejemplo.types";
 
-// Metodos de cobro que ve el operario en este modal. No es lo mismo que
-// EjemploPaymentMethod (el que guarda el backend): "cliente" es un metodo
-// solo de UI -- interna mente se registra como una venta en efectivo (no
-// se manda clientId al backend) y la "deuda" se lleva aparte, en el
-// estado ficticio de ejemplo.mockClients.ts (ver ProductosScreen.tsx /
-// EjemploHomePage.tsx). El dia que "Cliente" pase a ser cuenta corriente
-// de verdad, esto vuelve a mandar paymentMethod "cuenta" + clientId real.
-export type UiPaymentMethod = "efectivo" | "tarjeta" | "cliente";
+// Metodos de cobro que ve el operario en este modal. Antes "cliente" era
+// solo de UI y la deuda se llevaba en un estado ficticio en memoria (ver
+// ejemplo.mockClients.ts, ya eliminado). Pedido explicito del usuario:
+// "que a la hora de pagar no diga cliente diga credito y habra los
+// clientes que tenemos registrados... elimina los de prueba y pone los
+// que ingresemos nosotros" -- ahora "credito" usa los clientes reales
+// (los mismos de la pantalla Clientes) y manda paymentMethod "cuenta" +
+// clientId real al backend, que ya sabe crear el movimiento de cuenta
+// corriente (ver EjemploSalesService.createSale).
+export type UiPaymentMethod = "efectivo" | "tarjeta" | "credito";
 
-const METHODS: UiPaymentMethod[] = ["efectivo", "tarjeta", "cliente"];
+const METHODS: UiPaymentMethod[] = ["efectivo", "tarjeta", "credito"];
 
 const METHOD_LABELS: Record<UiPaymentMethod, string> = {
   efectivo: "Efectivo",
   tarjeta: "POS",
-  cliente: "Cliente"
+  credito: "Credito"
 };
 
 type PaymentMethodModalProps = {
   total: number;
-  mockClients: MockClient[];
+  clients: EjemploClient[];
   isSubmitting: boolean;
-  onConfirm: (paymentMethod: UiPaymentMethod, mockClientId?: string) => void;
+  onConfirm: (paymentMethod: UiPaymentMethod, clientId?: string) => void;
   onClose: () => void;
 };
 
-export function PaymentMethodModal({ total, mockClients, isSubmitting, onConfirm, onClose }: PaymentMethodModalProps) {
+export function PaymentMethodModal({ total, clients, isSubmitting, onConfirm, onClose }: PaymentMethodModalProps) {
   const [method, setMethod] = useState<UiPaymentMethod>("efectivo");
-  const [mockClientId, setMockClientId] = useState("");
+  const [clientId, setClientId] = useState("");
+  const [clientSearch, setClientSearch] = useState("");
+
+  const filteredClients = useMemo(() => {
+    const term = clientSearch.trim().toLowerCase();
+    if (!term) return clients;
+    return clients.filter((client) => client.name.toLowerCase().includes(term));
+  }, [clients, clientSearch]);
 
   function handleConfirm() {
-    if (method === "cliente" && !mockClientId) return;
-    onConfirm(method, method === "cliente" ? mockClientId : undefined);
+    if (method === "credito" && !clientId) return;
+    onConfirm(method, method === "credito" ? clientId : undefined);
   }
 
   return (
@@ -55,18 +64,32 @@ export function PaymentMethodModal({ total, mockClients, isSubmitting, onConfirm
           ))}
         </div>
 
-        {method === "cliente" ? (
-          <label className="ejemplo-field">
+        {method === "credito" ? (
+          <div className="ejemplo-field">
             <span>Cliente</span>
-            <select value={mockClientId} onChange={(event) => setMockClientId(event.target.value)}>
-              <option value="">Seleccionar...</option>
-              {mockClients.map((client) => (
-                <option key={client.id} value={client.id}>
-                  {client.name}
-                </option>
+            <input
+              className="ejemplo-search"
+              value={clientSearch}
+              onChange={(event) => setClientSearch(event.target.value)}
+              placeholder="Buscar cliente..."
+            />
+            <div className="ejemplo-client-list ejemplo-client-list--compact">
+              {filteredClients.map((client) => (
+                <div
+                  key={client.id}
+                  className={`ejemplo-client-row ${clientId === client.id ? "is-selected" : ""}`}
+                  onClick={() => setClientId(client.id)}
+                >
+                  <strong>{client.name}</strong>
+                </div>
               ))}
-            </select>
-          </label>
+              {!filteredClients.length ? (
+                <p className="ejemplo-empty">
+                  {clients.length ? "Sin resultados." : "No hay clientes cargados. Agregalos en la pantalla Clientes."}
+                </p>
+              ) : null}
+            </div>
+          </div>
         ) : null}
 
         <div className="ejemplo-modal__footer">
@@ -77,7 +100,7 @@ export function PaymentMethodModal({ total, mockClients, isSubmitting, onConfirm
             type="button"
             className="ejemplo-button"
             onClick={handleConfirm}
-            disabled={isSubmitting || (method === "cliente" && !mockClientId)}
+            disabled={isSubmitting || (method === "credito" && !clientId)}
           >
             {isSubmitting ? "Registrando..." : "Confirmar"}
           </button>

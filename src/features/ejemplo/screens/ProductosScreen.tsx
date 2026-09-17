@@ -5,14 +5,12 @@ import { CustomizeProductModal } from "../components/CustomizeProductModal";
 import { PaymentMethodModal, UiPaymentMethod } from "../components/PaymentMethodModal";
 import { createSale } from "../ejemplo.client";
 import { printSaleTicket } from "../services/ejemplo.print";
-import { EjemploProduct, EjemploSale } from "../ejemplo.types";
+import { EjemploClient, EjemploProduct, EjemploSale } from "../ejemplo.types";
 import { setAppBusy } from "../../../shared/state/appActivity";
-import { MockClient, MockPurchase } from "../ejemplo.mockClients";
 
 type ProductosScreenProps = {
   products: EjemploProduct[];
-  mockClients: MockClient[];
-  onAddMockPurchases: (clientId: string, purchases: MockPurchase[]) => void;
+  clients: EjemploClient[];
 };
 
 type CartLine = { key: string; product: EjemploProduct; detail: string; quantity: number };
@@ -27,12 +25,12 @@ function buildLineKey(productId: string, detail: string) {
 // prueba elegido (ver handleConfirmSale).
 const DEFAULT_CUSTOMER_NAME = "Juan";
 
-// Cuantos tickets salen por venta, fijo (ya no lo elige el operario): el
-// ticket completo para el cliente + la copia compacta "COMANDA" para
-// cocina/mostrador (ver ejemplo.ticketFormat.ts, copies=2).
-const TICKET_COPIES = 2;
+// Cuantos tickets salen por venta, fijo (ya no lo elige el operario):
+// solo el ticket completo para el cliente (pedido explicito: "que salga
+// solo un ticket" -- ver ejemplo.ticketFormat.ts, copies=1).
+const TICKET_COPIES = 1;
 
-export function ProductosScreen({ products, mockClients, onAddMockPurchases }: ProductosScreenProps) {
+export function ProductosScreen({ products, clients }: ProductosScreenProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [customizingProduct, setCustomizingProduct] = useState<EjemploProduct | null>(null);
@@ -92,15 +90,17 @@ export function ProductosScreen({ products, mockClients, onAddMockPurchases }: P
     setShowPaymentModal(true);
   }
 
-  async function handleConfirmSale(uiPaymentMethod: UiPaymentMethod, mockClientId?: string) {
+  async function handleConfirmSale(uiPaymentMethod: UiPaymentMethod, clientId?: string) {
     if (!cart.length) return;
 
-    // "Cliente" es ficticio (ver ejemplo.mockClients.ts): al backend se
-    // manda como una venta en efectivo normal, sin clientId -- la "deuda"
-    // del cliente de prueba se lleva aparte, solo en memoria.
-    const backendPaymentMethod = uiPaymentMethod === "cliente" ? "efectivo" : uiPaymentMethod;
-    const mockClient = uiPaymentMethod === "cliente" ? mockClients.find((item) => item.id === mockClientId) : undefined;
-    const customerName = mockClient?.name ?? DEFAULT_CUSTOMER_NAME;
+    // "Credito" manda paymentMethod "cuenta" + el clientId real al
+    // backend, que ya crea el movimiento de cuenta corriente (ver
+    // EjemploSalesService.createSale). El nombre para el ticket es el del
+    // cliente elegido; si se cobra en efectivo/POS no hay cliente real
+    // asociado, asi que se usa el nombre generico de la demo.
+    const backendPaymentMethod = uiPaymentMethod === "credito" ? "cuenta" : uiPaymentMethod;
+    const selectedClient = uiPaymentMethod === "credito" ? clients.find((item) => item.id === clientId) : undefined;
+    const customerName = selectedClient?.name ?? DEFAULT_CUSTOMER_NAME;
 
     setIsSubmittingSale(true);
     try {
@@ -110,25 +110,12 @@ export function ProductosScreen({ products, mockClients, onAddMockPurchases }: P
           productId: line.product.id,
           quantity: line.quantity,
           paymentMethod: backendPaymentMethod,
+          clientId: uiPaymentMethod === "credito" ? clientId : undefined,
           detail: line.detail || undefined
         });
         sales.push(sale);
       }
       toast.success("Venta registrada.");
-
-      if (mockClient) {
-        const today = new Date();
-        const dateLabel = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}`;
-        onAddMockPurchases(
-          mockClient.id,
-          cart.map((line) => ({
-            id: `mp-${Date.now()}-${line.key}`,
-            productName: `${line.quantity}x ${line.product.name}`,
-            amount: Math.round(line.product.price * line.quantity * 100) / 100,
-            dateLabel
-          }))
-        );
-      }
 
       try {
         await printSaleTicket(sales, customerName, TICKET_COPIES);
@@ -248,7 +235,7 @@ export function ProductosScreen({ products, mockClients, onAddMockPurchases }: P
       {showPaymentModal && cart.length ? (
         <PaymentMethodModal
           total={cartTotal}
-          mockClients={mockClients}
+          clients={clients}
           isSubmitting={isSubmittingSale}
           onConfirm={handleConfirmSale}
           onClose={() => setShowPaymentModal(false)}

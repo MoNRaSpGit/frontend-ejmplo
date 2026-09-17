@@ -827,6 +827,13 @@ h3 {
   overflow-y: auto;
 }
 
+/* Version chica para elegir cliente al cobrar (PaymentMethodModal): el
+   modal no tiene el alto de la pantalla de Clientes. */
+.ejemplo-client-list--compact {
+  max-height: 260px;
+  margin-top: 8px;
+}
+
 .ejemplo-client-row {
   display: flex;
   justify-content: space-between;
