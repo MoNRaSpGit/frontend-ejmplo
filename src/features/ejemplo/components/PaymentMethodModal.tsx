@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { EjemploClient } from "../ejemplo.types";
 
 // Metodos de cobro que ve el operario en este modal. Antes "cliente" era
@@ -31,13 +31,6 @@ type PaymentMethodModalProps = {
 export function PaymentMethodModal({ total, clients, isSubmitting, onConfirm, onClose }: PaymentMethodModalProps) {
   const [method, setMethod] = useState<UiPaymentMethod>("efectivo");
   const [clientId, setClientId] = useState("");
-  const [clientSearch, setClientSearch] = useState("");
-
-  const filteredClients = useMemo(() => {
-    const term = clientSearch.trim().toLowerCase();
-    if (!term) return clients;
-    return clients.filter((client) => client.name.toLowerCase().includes(term));
-  }, [clients, clientSearch]);
 
   function handleConfirm() {
     if (method === "credito" && !clientId) return;
@@ -65,31 +58,18 @@ export function PaymentMethodModal({ total, clients, isSubmitting, onConfirm, on
         </div>
 
         {method === "credito" ? (
-          <div className="ejemplo-field">
+          <label className="ejemplo-field">
             <span>Cliente</span>
-            <input
-              className="ejemplo-search"
-              value={clientSearch}
-              onChange={(event) => setClientSearch(event.target.value)}
-              placeholder="Buscar cliente..."
-            />
-            <div className="ejemplo-client-list ejemplo-client-list--compact">
-              {filteredClients.map((client) => (
-                <div
-                  key={client.id}
-                  className={`ejemplo-client-row ${clientId === client.id ? "is-selected" : ""}`}
-                  onClick={() => setClientId(client.id)}
-                >
-                  <strong>{client.name}</strong>
-                </div>
+            <select value={clientId} onChange={(event) => setClientId(event.target.value)}>
+              <option value="">Seleccionar...</option>
+              {clients.map((client) => (
+                <option key={client.id} value={client.id}>
+                  {client.name}
+                </option>
               ))}
-              {!filteredClients.length ? (
-                <p className="ejemplo-empty">
-                  {clients.length ? "Sin resultados." : "No hay clientes cargados. Agregalos en la pantalla Clientes."}
-                </p>
-              ) : null}
-            </div>
-          </div>
+            </select>
+            {!clients.length ? <p className="ejemplo-empty">No hay clientes cargados. Agregalos en la pantalla Clientes.</p> : null}
+          </label>
         ) : null}
 
         <div className="ejemplo-modal__footer">
